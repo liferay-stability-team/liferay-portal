@@ -1222,6 +1222,9 @@ public class PortalImpl implements Portal {
 		NavigableMap<String, String> virtualHostnames = getVirtualHostnames(
 			themeDisplay.getLayoutSet());
 
+		NavigableMap<String, String> localeVirtualHostNamMap =
+			_getLocaleVirtualHostNameMap(virtualHostnames);
+
 		String virtualHostname = _getVirtualHostname(
 			virtualHostnames, themeDisplay);
 
@@ -1277,20 +1280,36 @@ public class PortalImpl implements Portal {
 
 		if ((pos <= 0) || (pos >= canonicalURL.length())) {
 			for (Locale locale : availableLocales) {
+				String languageId = LocaleUtil.toLanguageId(locale);
+
+				String mappedHost = localeVirtualHostNamMap.get(languageId);
+
+				boolean useCanonical = false;
+
 				if ((localePrependFriendlyURLStyle == 0) ||
 					((localePrependFriendlyURLStyle != 2) &&
 					 siteDefaultLocale.equals(locale))) {
 
-					alternateURLs.put(locale, canonicalURL);
+					useCanonical = true;
+				}
+
+				String url;
+
+				if (mappedHost != null) {
+					url = StringUtil.replace(
+						canonicalURL, virtualHostname, mappedHost);
+				}
+				else if (useCanonical) {
+					url = canonicalURL;
 				}
 				else {
-					alternateURLs.put(
-						locale,
-						StringBundler.concat(
-							canonicalURL,
-							_buildI18NPath(locale, themeDisplay.getSiteGroup()),
-							StringPool.SLASH));
+					url = StringBundler.concat(
+						canonicalURL,
+						_buildI18NPath(locale, themeDisplay.getSiteGroup()),
+						StringPool.SLASH);
 				}
+
+				alternateURLs.put(locale, url);
 			}
 
 			return alternateURLs;
@@ -7647,6 +7666,22 @@ public class PortalImpl implements Portal {
 		}
 
 		return sb.toString();
+	}
+
+	private NavigableMap<String, String> _getLocaleVirtualHostNameMap(
+		NavigableMap<String, String> virtualHostnames) {
+
+		NavigableMap<String, String> localVirtualHostNameMap = new TreeMap<>();
+
+		for (Map.Entry<String, String> entry : virtualHostnames.entrySet()) {
+			String value = entry.getValue();
+
+			if ((value != null) && !value.isEmpty()) {
+				localVirtualHostNameMap.put(value, entry.getKey());
+			}
+		}
+
+		return localVirtualHostNameMap;
 	}
 
 	private String _getPortalURL(
