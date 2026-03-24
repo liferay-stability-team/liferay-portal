@@ -32,6 +32,7 @@ import com.liferay.portal.kernel.portlet.constants.FriendlyURLResolverConstants;
 import com.liferay.portal.kernel.service.CompanyLocalService;
 import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.LayoutLocalService;
+import com.liferay.portal.kernel.service.LayoutSetLocalServiceUtil;
 import com.liferay.portal.kernel.service.VirtualHostLocalService;
 import com.liferay.portal.kernel.test.TestInfo;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
@@ -66,6 +67,7 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.NavigableMap;
+import java.util.TreeMap;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -932,6 +934,44 @@ public class PortalImplAlternateURLTest {
 				_getThemeDisplayWithVirtualHosts(
 					_group, canonicalAssetPublisherContentURL),
 				alternateLocale, layout));
+
+		if (groupAvailableLocales != null) {
+			TestPropsUtil.set(PropsKeys.LOCALE_PREPEND_FRIENDLY_URL_STYLE, "3");
+
+			Map<Locale, String> langHostNameMap = new HashMap<>(8);
+			TreeMap<String, String> virtualHosts = new TreeMap<>();
+
+			for (Locale locale : groupAvailableLocales) {
+				String hostName = StringBundler.concat(
+					"test-", LocaleUtil.toBCP47LanguageId(locale), ".",
+					RandomTestUtil.randomString(3)
+				).toLowerCase();
+
+				langHostNameMap.put(locale, hostName);
+				virtualHosts.put(hostName, LocaleUtil.toLanguageId(locale));
+			}
+
+			LayoutSet layoutSet = LayoutSetLocalServiceUtil.updateVirtualHosts(
+				_group.getGroupId(), false, virtualHosts);
+
+			layoutSet.setVirtualHostnames(virtualHosts);
+
+			canonicalURL = "http://" + langHostNameMap.get(groupDefaultLocale);
+
+			ThemeDisplay themeDisplay = _getThemeDisplayWithVirtualHosts(
+				_group, canonicalURL);
+
+			themeDisplay.setLayoutSet(layoutSet);
+
+			for (Locale locale : groupAvailableLocales) {
+				expectedAlternateURL = "http://" + langHostNameMap.get(locale);
+
+				Assert.assertEquals(
+					expectedAlternateURL,
+					_portal.getAlternateURL(
+						canonicalURL, themeDisplay, locale, layout));
+			}
+		}
 	}
 
 	private static Locale _defaultLocale;
