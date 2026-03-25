@@ -15,6 +15,7 @@ import {isolatedSiteTest} from '../../../fixtures/isolatedSiteTest';
 import {loginTest} from '../../../fixtures/loginTest';
 import {pageEditorPagesTest} from '../../../fixtures/pageEditorPagesTest';
 import {siteSettingsPagesTest} from '../../../fixtures/siteSettingsPagesTest';
+import {workflowPagesTest} from '../../../fixtures/workflowPagesTest';
 import {createCategories} from '../../../helpers/CreateCategories';
 import {DLFILE_STATUS} from '../../../helpers/json-web-services/JSONWebServicesDocumentLibraryApiHelper';
 import {clickAndExpectToBeHidden} from '../../../utils/clickAndExpectToBeHidden';
@@ -31,6 +32,7 @@ const test = mergeTests(
 	apiHelpersTest,
 	applicationsMenuPageTest,
 	documentLibraryPagesTest,
+	workflowPagesTest,
 	featureFlagsTest({
 		'LPS-178052': {enabled: true},
 	}),
@@ -1107,5 +1109,81 @@ test(
 		await expect(
 			page.getByRole('button', {name: 'Select All'})
 		).not.toBeVisible();
+	}
+);
+
+test(
+	'Show the last modified date of the most recent version of a document, even if that version is still pending',
+	{
+		tag: ['@LPD-83517'],
+	},
+	async ({
+		documentLibraryEditFilePage,
+		documentLibraryEditFolderPage,
+		documentLibraryPage,
+		page,
+		site,
+		workflowTaskDetailsPage,
+		workflowTasksPage,
+	}) => {
+		await documentLibraryPage.goto(site.friendlyUrlPath);
+		await documentLibraryPage.goToCreateNewFolder();
+		const folderTitle = getRandomString();
+		await documentLibraryEditFolderPage.createNewFolder(folderTitle);
+
+		await documentLibraryPage.goToEditFolder(folderTitle);
+		await page.waitForURL(/edit_folder/);
+		await documentLibraryEditFolderPage.setWorkflow('Single Approver');
+		await documentLibraryPage.goto(site.friendlyUrlPath);
+
+		await page.getByRole('link', {name: folderTitle}).click();
+		await page.waitForURL(/view_folder/);
+		const folderUrl = page.url();
+		await documentLibraryPage.goToCreateNewFile();
+		const docTitle = getRandomString();
+		await documentLibraryEditFilePage.submitWorkflowForBasicFileEntry(
+			docTitle
+		);
+		await page.waitForURL(folderUrl);
+
+		await workflowTasksPage.goToAssignedToMyRoles();
+
+		await workflowTaskDetailsPage.assignToMeAction(docTitle);
+		await expect(
+			page.getByText('Your request completed successfully.')
+		).toBeVisible();
+
+		await workflowTaskDetailsPage.approveAction(docTitle);
+		await expect(
+			page.getByText('Your request completed successfully.')
+		).toBeVisible();
+
+		await documentLibraryPage.goto(site.friendlyUrlPath);
+		await page.getByRole('link', {name: folderTitle}).click();
+		await page.waitForURL(/view_folder/);
+
+		await documentLibraryPage.goToEditFileEntry(docTitle);
+		await page.waitForURL(/edit_file_entry/);
+		await documentLibraryEditFilePage.titleSelector.waitFor({
+			state: 'visible',
+			timeout: 2000,
+		});
+		const newDocTitle = docTitle + ' Edited';
+		await documentLibraryEditFilePage.submitWorkflowForBasicFileEntry(
+			newDocTitle
+		);
+		await expect(
+			page.getByText('Your request completed successfully.')
+		).toBeVisible();
+
+		await documentLibraryPage.goto(site.friendlyUrlPath);
+		await page.getByRole('link', {name: folderTitle}).click();
+		await page.waitForURL(/view_folder/);
+
+		const editedCard = page.locator('.card', {hasText: newDocTitle});
+		const lessThanFourSeconds = /Modified ([0-3] Seconds? ago|Just now)/;
+		await expect(editedCard.locator('.card-subtitle')).toHaveText(
+			lessThanFourSeconds
+		);
 	}
 );
