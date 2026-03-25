@@ -1149,14 +1149,15 @@ test(
 		await workflowTasksPage.goToAssignedToMyRoles();
 
 		await workflowTaskDetailsPage.assignToMeAction(docTitle);
-		await expect(
-			page.getByText('Your request completed successfully.')
-		).toBeVisible();
+		const expectSuccessToast = async () => {
+			await expect(
+				page.getByText('Your request completed successfully.')
+			).toBeVisible();
+		};
+		await expectSuccessToast();
 
 		await workflowTaskDetailsPage.approveAction(docTitle);
-		await expect(
-			page.getByText('Your request completed successfully.')
-		).toBeVisible();
+		await expectSuccessToast();
 
 		await documentLibraryPage.goto(site.friendlyUrlPath);
 		await page.getByRole('link', {name: folderTitle}).click();
@@ -1172,9 +1173,7 @@ test(
 		await documentLibraryEditFilePage.submitWorkflowForBasicFileEntry(
 			newDocTitle
 		);
-		await expect(
-			page.getByText('Your request completed successfully.')
-		).toBeVisible();
+		await expectSuccessToast();
 
 		await documentLibraryPage.goto(site.friendlyUrlPath);
 		await page.getByRole('link', {name: folderTitle}).click();
