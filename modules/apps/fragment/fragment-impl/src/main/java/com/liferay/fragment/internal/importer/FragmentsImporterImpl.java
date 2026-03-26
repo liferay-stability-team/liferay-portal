@@ -128,7 +128,7 @@ public class FragmentsImporterImpl implements FragmentsImporter {
 
 				_importResources(
 					userId, groupId, fragmentCollection, entry.getKey(),
-					fragmentsImportStrategy, zipFile, resourceReferences);
+					fragmentsImportStrategy, zipFile);
 
 				_importFragmentCompositions(
 					userId, groupId, zipFile,
@@ -425,7 +425,6 @@ public class FragmentsImporterImpl implements FragmentsImporter {
 	private void _addPortletFileEntriesWithFolders(
 			long userId, long groupId, FragmentCollection fragmentCollection,
 			FragmentsImportStrategy fragmentsImportStrategy, ZipFile zipFile,
-			Map<String, String> resourceReferences,
 			Map<String, String> zipEntryNames, Repository repository)
 		throws Exception {
 
@@ -1062,8 +1061,7 @@ public class FragmentsImporterImpl implements FragmentsImporter {
 	private void _importResources(
 			long userId, long groupId, FragmentCollection fragmentCollection,
 			String fragmentCollectionKey,
-			FragmentsImportStrategy fragmentsImportStrategy, ZipFile zipFile,
-			Map<String, String> resourceReferences)
+			FragmentsImportStrategy fragmentsImportStrategy, ZipFile zipFile)
 		throws Exception {
 
 		if (groupId == 0) {
@@ -1149,7 +1147,7 @@ public class FragmentsImporterImpl implements FragmentsImporter {
 
 		_addPortletFileEntriesWithFolders(
 			userId, groupId, fragmentCollection, fragmentsImportStrategy,
-			zipFile, resourceReferences, zipEntryNames, repository);
+			zipFile, zipEntryNames, repository);
 	}
 
 	private boolean _isFragmentCollection(String fileName) {
