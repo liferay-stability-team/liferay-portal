@@ -445,44 +445,45 @@ public class FragmentsImporterImpl implements FragmentsImporter {
 				String fileEntryPath = entry.getKey();
 
 				if (zipEntryNames.containsKey(fileEntryPath)) {
-					FileEntry fileEntry = entry.getValue();
-
-					if (fragmentServiceConfiguration.propagateChanges() ||
-						Objects.equals(
+					if (!fragmentServiceConfiguration.propagateChanges() ||
+						!Objects.equals(
 							FragmentsImportStrategy.OVERWRITE,
 							fragmentsImportStrategy)) {
 
-						PortletFileRepositoryUtil.deletePortletFileEntry(
-							fileEntry.getFileEntryId());
-
-						String fileName = entry.getKey();
-						String folderPath = StringPool.BLANK;
-
-						int index = fileName.lastIndexOf(StringPool.SLASH);
-
-						if (index != -1) {
-							folderPath = fileName.substring(0, index);
-							fileName = fileName.substring(index + 1);
-						}
-
-						PortletFileRepositoryUtil.addPortletFileEntry(
-							null, groupId, userId,
-							FragmentCollection.class.getName(),
-							fragmentCollection.getFragmentCollectionId(),
-							FragmentPortletKeys.FRAGMENT,
-							_getOrCreateFolderId(
-								folderIdsMap, folderPath,
-								repository.getRepositoryId(), userId),
-							_getInputStream(
-								zipFile, zipEntryNames.get(fileEntryPath)),
-							fileName, MimeTypesUtil.getContentType(fileName),
-							false);
-
 						zipEntryNames.remove(fileEntryPath);
+
+						continue;
 					}
-					else {
-						zipEntryNames.remove(fileEntryPath);
+
+					FileEntry fileEntry = entry.getValue();
+
+					PortletFileRepositoryUtil.deletePortletFileEntry(
+						fileEntry.getFileEntryId());
+
+					String fileName = entry.getKey();
+					String folderPath = StringPool.BLANK;
+
+					int index = fileName.lastIndexOf(StringPool.SLASH);
+
+					if (index != -1) {
+						folderPath = fileName.substring(0, index);
+						fileName = fileName.substring(index + 1);
 					}
+
+					PortletFileRepositoryUtil.addPortletFileEntry(
+						null, groupId, userId,
+						FragmentCollection.class.getName(),
+						fragmentCollection.getFragmentCollectionId(),
+						FragmentPortletKeys.FRAGMENT,
+						_getOrCreateFolderId(
+							folderIdsMap, folderPath,
+							repository.getRepositoryId(), userId),
+						_getInputStream(
+							zipFile, zipEntryNames.get(fileEntryPath)),
+						fileName, MimeTypesUtil.getContentType(fileName),
+						false);
+
+					zipEntryNames.remove(fileEntryPath);
 				}
 			}
 		}
