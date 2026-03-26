@@ -482,26 +482,6 @@ public class FragmentsImporterImpl implements FragmentsImporter {
 						zipEntryNames.remove(fileEntryPath);
 					}
 					else {
-						String folderPath = StringPool.BLANK;
-
-						int index = fileEntryPath.lastIndexOf(StringPool.SLASH);
-
-						if (index != -1) {
-							folderPath = fileEntryPath.substring(0, index);
-						}
-
-						String newFileName =
-							PortletFileRepositoryUtil.getUniqueFileName(
-								fileEntry.getGroupId(), fileEntry.getFolderId(),
-								fileEntry.getFileName());
-
-						resourceReferences.put(
-							fileEntryPath, folderPath + newFileName);
-
-						zipEntryNames.put(
-							folderPath + newFileName,
-							zipEntryNames.get(fileEntryPath));
-
 						zipEntryNames.remove(fileEntryPath);
 					}
 				}
