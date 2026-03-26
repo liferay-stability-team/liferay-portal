@@ -448,7 +448,11 @@ public class FragmentsImporterImpl implements FragmentsImporter {
 				if (zipEntryNames.containsKey(fileEntryPath)) {
 					FileEntry fileEntry = entry.getValue();
 
-					if (fragmentServiceConfiguration.propagateChanges()) {
+					if (fragmentServiceConfiguration.propagateChanges() ||
+						Objects.equals(
+							FragmentsImportStrategy.OVERWRITE,
+							fragmentsImportStrategy)) {
+
 						PortletFileRepositoryUtil.deletePortletFileEntry(
 							fileEntry.getFileEntryId());
 
