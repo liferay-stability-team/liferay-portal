@@ -111,11 +111,10 @@ public class FragmentsImporterTest {
 	}
 
 	@Test
-	@TestInfo("LPS-151013")
-	public void testImportFragmentResourcesCreatesNewResourceWithoutPropagation()
+	public void testImportFragmentResourcesCreatesNoNewResourceWithoutPropagation()
 		throws Exception {
 
-		_testResources(2, "[resources:image (1).png]");
+		_testResources(1, "[resources:image.png]");
 	}
 
 	@Test
