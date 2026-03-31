@@ -9,15 +9,22 @@ import com.liferay.dynamic.data.mapping.exception.NoSuchStructureException;
 import com.liferay.dynamic.data.mapping.info.item.provider.DDMTemplateInfoItemFieldSetProvider;
 import com.liferay.dynamic.data.mapping.model.DDMStructure;
 import com.liferay.dynamic.data.mapping.model.DDMTemplate;
+import com.liferay.dynamic.data.mapping.model.DDMTemplateTable;
 import com.liferay.dynamic.data.mapping.service.DDMStructureLocalService;
+import com.liferay.dynamic.data.mapping.service.DDMTemplateLocalService;
 import com.liferay.info.field.InfoField;
 import com.liferay.info.field.InfoFieldSet;
 import com.liferay.info.field.type.TextInfoFieldType;
 import com.liferay.info.localized.InfoLocalizedValue;
+import com.liferay.petra.sql.dsl.DSLQueryFactoryUtil;
+import com.liferay.petra.sql.dsl.query.DSLQuery;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.util.LocaleThreadLocal;
+import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portlet.display.template.PortletDisplayTemplate;
+
+import java.util.List;
 
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -31,19 +38,18 @@ public class DDMTemplateInfoItemFieldSetProviderImpl
 	implements DDMTemplateInfoItemFieldSetProvider {
 
 	@Override
-	public InfoFieldSet getInfoItemFieldSet(long ddmStructureId)
+	public InfoFieldSet getInfoItemFieldSet(long ddmStructureId, long groupId)
 		throws NoSuchStructureException {
 
 		try {
-			DDMStructure ddmStructure =
-				_ddmStructureLocalService.getDDMStructure(ddmStructureId);
+			List<DDMTemplate> ddmTemplates = _getFilteredTemplates(
+				_ddmStructureLocalService.getDDMStructure(ddmStructureId),
+				groupId);
 
 			return InfoFieldSet.builder(
 			).infoFieldSetEntry(
 				unsafeConsumer -> {
-					for (DDMTemplate ddmTemplate :
-							ddmStructure.getTemplates()) {
-
+					for (DDMTemplate ddmTemplate : ddmTemplates) {
 						unsafeConsumer.accept(
 							InfoField.builder(
 							).infoFieldType(
@@ -76,6 +82,36 @@ public class DDMTemplateInfoItemFieldSetProviderImpl
 		}
 	}
 
+	private List<DDMTemplate> _getFilteredTemplates(
+		DDMStructure ddmStructure, long siteGroupId) {
+
+		if (siteGroupId == 0L) {
+			return ddmStructure.getTemplates();
+		}
+
+		DSLQuery dslQuery = DSLQueryFactoryUtil.select(
+			DDMTemplateTable.INSTANCE
+		).from(
+			DDMTemplateTable.INSTANCE
+		).where(
+			DDMTemplateTable.INSTANCE.classPK.eq(
+				ddmStructure.getStructureId()
+			).and(
+				DDMTemplateTable.INSTANCE.classNameId.eq(
+					PortalUtil.getClassNameId(DDMStructure.class))
+			).and(
+				DDMTemplateTable.INSTANCE.groupId.eq(
+					siteGroupId
+				).or(
+					DDMTemplateTable.INSTANCE.groupId.eq(
+						ddmStructure.getGroupId())
+				)
+			)
+		);
+
+		return _ddmTemplateLocalService.dslQuery(dslQuery);
+	}
+
 	private String _getTemplateFieldName(DDMTemplate ddmTemplate) {
 		String templateKey = ddmTemplate.getTemplateKey();
 
@@ -85,5 +121,8 @@ public class DDMTemplateInfoItemFieldSetProviderImpl
 
 	@Reference
 	private DDMStructureLocalService _ddmStructureLocalService;
+
+	@Reference
+	private DDMTemplateLocalService _ddmTemplateLocalService;
 
 }
