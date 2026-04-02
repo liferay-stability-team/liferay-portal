@@ -570,9 +570,18 @@ public class FriendlyURLServlet extends HttpServlet {
 		if ((layout != null) &&
 			Objects.equals(layout.getType(), LayoutConstants.TYPE_URL)) {
 
-			actualURL = actualURL.concat(
-				HttpComponentsUtil.parameterMapToString(
-					params, !actualURL.contains(StringPool.QUESTION)));
+			String paramString = HttpComponentsUtil.parameterMapToString(
+				params, !actualURL.contains(StringPool.QUESTION));
+
+			if (Validator.isNotNull(paramString)) {
+				if (actualURL.contains(StringPool.QUESTION)) {
+					actualURL = StringBundler.concat(
+						actualURL, StringPool.AMPERSAND, paramString);
+				}
+				else {
+					actualURL = actualURL.concat(paramString);
+				}
+			}
 		}
 
 		return new Redirect(
