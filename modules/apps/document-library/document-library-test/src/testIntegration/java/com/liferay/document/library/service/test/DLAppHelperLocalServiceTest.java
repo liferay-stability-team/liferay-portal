@@ -6,10 +6,14 @@
 package com.liferay.document.library.service.test;
 
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
+import com.liferay.asset.kernel.model.AssetEntry;
+import com.liferay.asset.kernel.service.AssetEntryLocalService;
+import com.liferay.document.library.kernel.model.DLFileEntry;
 import com.liferay.document.library.kernel.model.DLFileEntryType;
 import com.liferay.document.library.kernel.model.DLFolderConstants;
 import com.liferay.document.library.kernel.service.DLAppHelperLocalService;
 import com.liferay.document.library.kernel.service.DLAppLocalService;
+import com.liferay.document.library.kernel.service.DLAppService;
 import com.liferay.document.library.kernel.service.DLFileEntryTypeLocalServiceUtil;
 import com.liferay.layout.page.template.test.util.DisplayPageTemplateTestUtil;
 import com.liferay.portal.kernel.repository.model.FileEntry;
@@ -28,9 +32,13 @@ import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
+import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
 import com.liferay.portal.workflow.manager.WorkflowDefinitionManager;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+
+import java.util.Date;
 
 import org.junit.Assert;
 import org.junit.ClassRule;
@@ -49,7 +57,41 @@ public class DLAppHelperLocalServiceTest {
 	@ClassRule
 	@Rule
 	public static final AggregateTestRule aggregateTestRule =
-		new LiferayIntegrationTestRule();
+		new AggregateTestRule(
+			new LiferayIntegrationTestRule(),
+			PermissionCheckerMethodTestRule.INSTANCE);
+
+	@Test
+	public void testAssetEntryPublishDate() throws Exception {
+		String content = RandomTestUtil.randomString();
+
+		Date displayDate = RandomTestUtil.nextDate();
+
+		ServiceContext serviceContext =
+			ServiceContextTestUtil.getServiceContext();
+
+		serviceContext.setWorkflowAction(WorkflowConstants.ACTION_PUBLISH);
+
+		FileEntry fileEntry = _dlAppService.addFileEntry(
+			null, TestPropsValues.getGroupId(),
+			DLFolderConstants.DEFAULT_PARENT_FOLDER_ID,
+			RandomTestUtil.randomString() + ".txt", ContentTypes.TEXT_PLAIN,
+			RandomTestUtil.randomString(), RandomTestUtil.randomString(),
+			RandomTestUtil.randomString(), RandomTestUtil.randomString(),
+			new ByteArrayInputStream(content.getBytes()), 0, displayDate, null,
+			null, serviceContext);
+
+		AssetEntry assetEntry = _assetEntryLocalService.fetchEntry(
+			DLFileEntry.class.getName(), fileEntry.getFileEntryId());
+
+		Assert.assertNotNull(assetEntry);
+
+		Date assetEntryPublishDate = assetEntry.getPublishDate();
+
+		Assert.assertEquals(
+			displayDate.getTime() / 1000,
+			assetEntryPublishDate.getTime() / 1000);
+	}
 
 	@Test
 	public void testMoveFileEntryFromTrashRestoresFileEntryContent()
@@ -170,6 +212,9 @@ public class DLAppHelperLocalServiceTest {
 	}
 
 	@Inject
+	private AssetEntryLocalService _assetEntryLocalService;
+
+	@Inject
 	private CompanyLocalService _companyLocalService;
 
 	@Inject
@@ -177,6 +222,9 @@ public class DLAppHelperLocalServiceTest {
 
 	@Inject
 	private DLAppLocalService _dlAppLocalService;
+
+	@Inject
+	private DLAppService _dlAppService;
 
 	@Inject
 	private File _file;
