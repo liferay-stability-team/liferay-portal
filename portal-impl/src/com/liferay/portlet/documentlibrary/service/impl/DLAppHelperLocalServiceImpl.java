@@ -527,7 +527,7 @@ public class DLAppHelperLocalServiceImpl
 			Date publishDate = null;
 
 			if (visible) {
-				publishDate = fileEntry.getCreateDate();
+				publishDate = fileEntry.getDisplayDate();
 			}
 
 			assetEntry = _assetEntryLocalService.updateEntry(
