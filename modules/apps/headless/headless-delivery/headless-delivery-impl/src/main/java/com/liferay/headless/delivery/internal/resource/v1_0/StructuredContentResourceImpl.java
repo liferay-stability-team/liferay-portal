@@ -495,21 +495,6 @@ public class StructuredContentResourceImpl
 		JournalArticle journalArticle = _journalArticleService.getLatestArticle(
 			structuredContentId);
 
-		if (!ArrayUtil.contains(
-				journalArticle.getAvailableLanguageIds(),
-				contextAcceptLanguage.getPreferredLanguageId())) {
-
-			throw new BadRequestException(
-				StringBundler.concat(
-					"Unable to patch structured content with language ",
-					LocaleUtil.toW3cLanguageId(
-						contextAcceptLanguage.getPreferredLanguageId()),
-					" because it is only available in the following languages ",
-					Arrays.toString(
-						LocaleUtil.toW3cLanguageIds(
-							journalArticle.getAvailableLanguageIds()))));
-		}
-
 		DDMStructure ddmStructure = journalArticle.getDDMStructure();
 
 		_validateContentFields(

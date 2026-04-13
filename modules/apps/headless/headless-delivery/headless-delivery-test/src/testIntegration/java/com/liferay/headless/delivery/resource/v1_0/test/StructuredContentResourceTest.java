@@ -535,6 +535,7 @@ public class StructuredContentResourceTest
 		_testPatchStructuredContentWithLocalizedContentFields();
 		_testPatchStructuredContentWithRandomTitle();
 		_testPatchStructuredContentWithUnlocalizedContentFields();
+		_testPatchStructuredContentWithNewLocale();
 	}
 
 	@Override
@@ -2996,7 +2997,7 @@ public class StructuredContentResourceTest
 													data = randomString;
 												}
 											};
-										fieldReference = "Foo";
+										fieldReference = "MyText";
 										name = "MyText";
 									}
 								}
@@ -3010,7 +3011,64 @@ public class StructuredContentResourceTest
 		ContentFieldValue contentFieldValue =
 			contentField.getContentFieldValue();
 
+		Assert.assertNotNull(contentFieldValue);
+
 		Assert.assertEquals(randomString, contentFieldValue.getData());
+	}
+
+
+	private void _testPatchStructuredContentWithNewLocale() throws Exception {
+
+		Locale locale = LocaleUtil.US;
+
+		StructuredContentResource structuredContentResource =
+			_buildStructureContentResource(locale);
+
+		StructuredContent structuredContent = _randomStructuredContent(
+			locale, false); // important: false to avoid multi locale
+
+		StructuredContent postStructuredContent =
+			structuredContentResource.postSiteStructuredContent(
+				testGroup.getGroupId(), structuredContent);
+
+		String germanData = RandomTestUtil.randomString(10);
+
+		Map<String, ContentFieldValue> contentFieldValues =
+			HashMapBuilder.put(
+				"de-DE",
+				(ContentFieldValue)new ContentFieldValue() {
+					{
+						data = germanData;
+					}
+				}
+			).build();
+
+		structuredContent.setContentFields(
+			new ContentField[] {
+				new ContentField() {
+					{
+						contentFieldValue = contentFieldValues.get("de-DE");
+						contentFieldValue_i18n = contentFieldValues;
+						fieldReference = "MyText";
+						name = "MyText";
+					}
+				}
+			});
+
+		structuredContentResource =
+			_buildStructureContentResource(LocaleUtil.GERMANY);
+
+		StructuredContent patchStructuredContent =
+			structuredContentResource.patchStructuredContent(
+				postStructuredContent.getId(), structuredContent);
+
+		ContentField patchContentField =
+			patchStructuredContent.getContentFields()[0];
+
+		Map<String, ContentFieldValue> patchContentFieldValue_I18n =
+			patchContentField.getContentFieldValue_i18n();
+
+		_assertData(patchContentFieldValue_I18n, germanData, "de-DE");
 	}
 
 	private void _testPostAssetLibraryStructuredContent(
