@@ -43,11 +43,15 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
+import com.liferay.portal.kernel.dao.orm.QueryUtil;
+import com.liferay.portal.kernel.util.ListUtil;
+import com.liferay.portal.kernel.util.OrderByComparator;
+import com.liferay.portal.kernel.util.OrderByComparatorFactoryUtil;
+
 /**
  * @author Roberto Díaz
  */
 public class AnnouncementsAdminViewDisplayContext {
-
 	public AnnouncementsAdminViewDisplayContext(
 		HttpServletRequest httpServletRequest,
 		LiferayPortletRequest liferayPortletRequest,
@@ -59,19 +63,18 @@ public class AnnouncementsAdminViewDisplayContext {
 		_liferayPortletResponse = liferayPortletResponse;
 		_renderRequest = renderRequest;
 
-		_themeDisplay = (ThemeDisplay)httpServletRequest.getAttribute(
+		_themeDisplay = (ThemeDisplay) httpServletRequest.getAttribute(
 			WebKeys.THEME_DISPLAY);
 	}
 
 	public List<String> getAvailableActions(
-			AnnouncementsEntry announcementsEntry)
-		throws PortalException {
+		AnnouncementsEntry announcementsEntry) throws PortalException {
 
 		List<String> availableActions = new ArrayList<>();
 
 		if (AnnouncementsEntryPermission.contains(
-				_themeDisplay.getPermissionChecker(), announcementsEntry,
-				ActionKeys.DELETE)) {
+			_themeDisplay.getPermissionChecker(), announcementsEntry,
+			ActionKeys.DELETE)) {
 
 			availableActions.add("deleteEntries");
 		}
@@ -80,14 +83,13 @@ public class AnnouncementsAdminViewDisplayContext {
 	}
 
 	public String getCurrentDistributionScopeLabel() throws Exception {
-		String distributionScope = ParamUtil.getString(
-			_httpServletRequest, "distributionScope");
+		String distributionScope =
+			ParamUtil.getString(_httpServletRequest, "distributionScope");
 
 		if (Validator.isNotNull(distributionScope)) {
 			Map<String, String> distributionScopes = getDistributionScopes();
 
-			for (Map.Entry<String, String> entry :
-					distributionScopes.entrySet()) {
+			for (Map.Entry<String, String> entry : distributionScopes.entrySet()) {
 
 				String value = entry.getValue();
 
@@ -108,12 +110,11 @@ public class AnnouncementsAdminViewDisplayContext {
 		Map<String, String> distributionScopes = new LinkedHashMap<>();
 
 		ThemeDisplay themeDisplay =
-			(ThemeDisplay)_httpServletRequest.getAttribute(
+			(ThemeDisplay) _httpServletRequest.getAttribute(
 				WebKeys.THEME_DISPLAY);
 
-		if (PortalPermissionUtil.contains(
-				themeDisplay.getPermissionChecker(),
-				ActionKeys.ADD_GENERAL_ANNOUNCEMENTS)) {
+		if (PortalPermissionUtil.contains(themeDisplay.getPermissionChecker(),
+			ActionKeys.ADD_GENERAL_ANNOUNCEMENTS)) {
 
 			distributionScopes.put("general", "0,0");
 		}
@@ -126,44 +127,40 @@ public class AnnouncementsAdminViewDisplayContext {
 					group.getDescriptiveName(themeDisplay.getLocale()), " (",
 					LanguageUtil.get(_httpServletRequest, "site"), ")"),
 				PortalUtil.getClassNameId(Group.class) + StringPool.COMMA +
-					group.getGroupId());
+				group.getGroupId());
 		}
 
-		List<Organization> organizations = AnnouncementsUtil.getOrganizations(
-			themeDisplay);
+		List<Organization> organizations =
+			AnnouncementsUtil.getOrganizations(themeDisplay);
 
 		for (Organization organization : organizations) {
-			String name = StringBundler.concat(
-				organization.getName(), " (",
+			String name = StringBundler.concat(organization.getName(), " (",
 				LanguageUtil.get(_httpServletRequest, "organization"), ")");
 
-			distributionScopes.put(
-				name,
+			distributionScopes.put(name,
 				PortalUtil.getClassNameId(Organization.class) +
-					StringPool.COMMA + organization.getOrganizationId());
+				StringPool.COMMA + organization.getOrganizationId());
 		}
 
 		List<Role> roles = AnnouncementsUtil.getRoles(themeDisplay);
 
 		for (Role role : roles) {
 			distributionScopes.put(
-				StringBundler.concat(
-					role.getDescriptiveName(), " (",
+				StringBundler.concat(role.getDescriptiveName(), " (",
 					LanguageUtil.get(_httpServletRequest, "role"), ")"),
 				PortalUtil.getClassNameId(Role.class) + StringPool.COMMA +
-					role.getRoleId());
+				role.getRoleId());
 		}
 
-		List<UserGroup> userGroups = AnnouncementsUtil.getUserGroups(
-			themeDisplay);
+		List<UserGroup> userGroups =
+			AnnouncementsUtil.getUserGroups(themeDisplay);
 
 		for (UserGroup userGroup : userGroups) {
 			distributionScopes.put(
-				StringBundler.concat(
-					userGroup.getName(), " (",
+				StringBundler.concat(userGroup.getName(), " (",
 					LanguageUtil.get(_httpServletRequest, "user-group"), ")"),
 				PortalUtil.getClassNameId(UserGroup.class) + StringPool.COMMA +
-					userGroup.getUserGroupId());
+				userGroup.getUserGroupId());
 		}
 
 		return distributionScopes;
@@ -175,21 +172,27 @@ public class AnnouncementsAdminViewDisplayContext {
 	}
 
 	public SearchContainer<AnnouncementsEntry> getSearchContainer() {
+		System.out.println("INSIDE getSearchContainer");
+
+		String orderByType =
+			ParamUtil.getString(_renderRequest, "orderByType", "desc");
+		System.out.println("ORDER TYPE = " + orderByType);
+
 		SearchContainer<AnnouncementsEntry>
-			announcementsEntriesSearchContainer = new SearchContainer<>(
-				_renderRequest, null, null, SearchContainer.DEFAULT_CUR_PARAM,
+			announcementsEntriesSearchContainer =
+			new SearchContainer<>(_renderRequest, null, null,
+				SearchContainer.DEFAULT_CUR_PARAM,
 				SearchContainer.DEFAULT_DELTA,
-				PortletURLUtil.getCurrent(
-					_liferayPortletRequest, _liferayPortletResponse),
-				null, "no-entries-were-found");
+				PortletURLUtil.getCurrent(_liferayPortletRequest,
+					_liferayPortletResponse), null, "no-entries-were-found");
 
 		announcementsEntriesSearchContainer.setId(getSearchContainerId());
 
 		long classNameId = 0;
 		long classPK = 0;
 
-		String[] distributionScopeArray = StringUtil.split(
-			getDistributionScope());
+		String[] distributionScopeArray =
+			StringUtil.split(getDistributionScope());
 
 		if (distributionScopeArray.length == 2) {
 			classNameId = GetterUtil.getLong(distributionScopeArray[0]);
@@ -199,20 +202,30 @@ public class AnnouncementsAdminViewDisplayContext {
 		long announcementsClassNameId = classNameId;
 		long announcementsClassPK = classPK;
 
-		announcementsEntriesSearchContainer.setResultsAndTotal(
-			() -> AnnouncementsEntryLocalServiceUtil.getEntries(
-				_themeDisplay.getCompanyId(), announcementsClassNameId,
-				announcementsClassPK, Objects.equals(getNavigation(), "alerts"),
+		announcementsEntriesSearchContainer.setResultsAndTotal(() -> {
+			List<AnnouncementsEntry> entries =
+				AnnouncementsEntryLocalServiceUtil.getEntries(
+					_themeDisplay.getCompanyId(), announcementsClassNameId,
+					announcementsClassPK,
+					Objects.equals(getNavigation(), "alerts"),
+					QueryUtil.ALL_POS, QueryUtil.ALL_POS);
+
+			OrderByComparator<AnnouncementsEntry> orderByComparator =
+				OrderByComparatorFactoryUtil.create("AnnouncementsEntry",
+					"createDate", "asc".equals(orderByType));
+
+			entries = ListUtil.sort(entries, orderByComparator);
+
+			return ListUtil.subList(entries,
 				announcementsEntriesSearchContainer.getStart(),
-				announcementsEntriesSearchContainer.getEnd()),
-			AnnouncementsEntryLocalServiceUtil.getEntriesCount(
-				_themeDisplay.getCompanyId(), announcementsClassNameId,
-				announcementsClassPK,
-				Objects.equals(getNavigation(), "alerts")));
+				announcementsEntriesSearchContainer.getEnd());
+		}, AnnouncementsEntryLocalServiceUtil.getEntriesCount(
+			_themeDisplay.getCompanyId(), announcementsClassNameId,
+			announcementsClassPK, Objects.equals(getNavigation(), "alerts")));
 
 		announcementsEntriesSearchContainer.setRowChecker(
-			new AnnouncementsEntryChecker(
-				_liferayPortletRequest, _liferayPortletResponse));
+			new AnnouncementsEntryChecker(_liferayPortletRequest,
+				_liferayPortletResponse));
 
 		return announcementsEntriesSearchContainer;
 	}
@@ -229,8 +242,8 @@ public class AnnouncementsAdminViewDisplayContext {
 		return _UUID;
 	}
 
-	private static final UUID _UUID = UUID.fromString(
-		"14f20793-d4e2-4173-acd7-7f1c9cda9a36");
+	private static final UUID _UUID =
+		UUID.fromString("14f20793-d4e2-4173-acd7-7f1c9cda9a36");
 
 	private final HttpServletRequest _httpServletRequest;
 	private final LiferayPortletRequest _liferayPortletRequest;
