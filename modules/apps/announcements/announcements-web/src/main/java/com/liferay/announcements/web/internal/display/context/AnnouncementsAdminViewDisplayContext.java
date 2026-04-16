@@ -172,11 +172,9 @@ public class AnnouncementsAdminViewDisplayContext {
 	}
 
 	public SearchContainer<AnnouncementsEntry> getSearchContainer() {
-		System.out.println("INSIDE getSearchContainer");
 
 		String orderByType =
 			ParamUtil.getString(_renderRequest, "orderByType", "desc");
-		System.out.println("ORDER TYPE = " + orderByType);
 
 		SearchContainer<AnnouncementsEntry>
 			announcementsEntriesSearchContainer =
