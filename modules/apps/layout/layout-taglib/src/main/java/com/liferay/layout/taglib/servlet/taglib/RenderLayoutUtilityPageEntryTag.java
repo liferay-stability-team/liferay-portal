@@ -10,6 +10,7 @@ import com.liferay.layout.taglib.internal.servlet.ServletContextUtil;
 import com.liferay.layout.util.structure.LayoutStructure;
 import com.liferay.layout.utility.page.model.LayoutUtilityPageEntry;
 import com.liferay.layout.utility.page.service.LayoutUtilityPageEntryLocalServiceUtil;
+import com.liferay.portal.kernel.servlet.SessionErrors;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.segments.service.SegmentsExperienceLocalServiceUtil;
@@ -69,6 +70,10 @@ public class RenderLayoutUtilityPageEntryTag extends IncludeTag {
 
 		LayoutUtilityPageEntry layoutUtilityPageEntry =
 			_getLayoutUtilityPageEntry();
+
+		if (layoutUtilityPageEntry != null) {
+			SessionErrors.clear(httpServletRequest);
+		}
 
 		httpServletRequest.setAttribute(
 			"liferay-layout:render-layout-utility-page-entry:layoutStructure",
