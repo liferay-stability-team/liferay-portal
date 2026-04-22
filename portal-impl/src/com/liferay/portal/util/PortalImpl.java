@@ -6075,7 +6075,18 @@ public class PortalImpl implements Portal {
 
 			httpServletResponse.setStatus(status);
 
-			SessionErrors.add(httpSession, exception.getClass(), exception);
+			String exceptionSimpleName = exception.getClass().getSimpleName();
+
+			if (exceptionSimpleName.startsWith("NoSuch") &&
+				exceptionSimpleName.endsWith("Exception")) {
+
+				httpServletRequest.setAttribute(
+					NoSuchLayoutException.class.getName(), Boolean.TRUE);
+			}
+			else {
+				SessionErrors.add(
+					httpSession, exception.getClass(), exception);
+			}
 
 			ServletContext servletContext = httpSession.getServletContext();
 
