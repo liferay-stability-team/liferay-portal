@@ -6075,11 +6075,7 @@ public class PortalImpl implements Portal {
 
 			httpServletResponse.setStatus(status);
 
-			String exceptionSimpleName = exception.getClass().getSimpleName();
-
-			if (exceptionSimpleName.startsWith("NoSuch") &&
-				exceptionSimpleName.endsWith("Exception")) {
-
+			if (_isNoSuchException(exception.getClass())) {
 				httpServletRequest.setAttribute(
 					NoSuchLayoutException.class.getName(), Boolean.TRUE);
 			}
@@ -8022,6 +8018,14 @@ public class PortalImpl implements Portal {
 		}
 
 		return virtualHostnames.firstKey();
+	}
+
+	private boolean _isNoSuchException(Class<?> clazz) {
+		String name = clazz.getName();
+
+		name = name.substring(name.lastIndexOf(CharPool.PERIOD) + 1);
+
+		return name.startsWith("NoSuch") && name.endsWith("Exception");
 	}
 
 	private boolean _isSignedIn(HttpServletRequest httpServletRequest) {
