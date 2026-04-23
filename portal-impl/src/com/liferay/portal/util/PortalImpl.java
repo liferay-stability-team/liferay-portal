@@ -6080,8 +6080,7 @@ public class PortalImpl implements Portal {
 					NoSuchLayoutException.class.getName(), Boolean.TRUE);
 			}
 			else {
-				SessionErrors.add(
-					httpSession, exception.getClass(), exception);
+				SessionErrors.add(httpSession, exception.getClass(), exception);
 			}
 
 			ServletContext servletContext = httpSession.getServletContext();
@@ -8025,7 +8024,11 @@ public class PortalImpl implements Portal {
 
 		name = name.substring(name.lastIndexOf(CharPool.PERIOD) + 1);
 
-		return name.startsWith("NoSuch") && name.endsWith("Exception");
+		if (name.startsWith("NoSuch") && name.endsWith("Exception")) {
+			return true;
+		}
+
+		return false;
 	}
 
 	private boolean _isSignedIn(HttpServletRequest httpServletRequest) {
