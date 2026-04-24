@@ -38,6 +38,7 @@ import com.liferay.portal.kernel.exception.ImageTypeException;
 import com.liferay.portal.kernel.exception.NoSuchGroupException;
 import com.liferay.portal.kernel.exception.NoSuchImageException;
 import com.liferay.portal.kernel.exception.NoSuchLayoutException;
+import com.liferay.portal.kernel.exception.NoSuchModelException;
 import com.liferay.portal.kernel.exception.NoSuchUserException;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.exception.RSSFeedException;
@@ -5990,16 +5991,8 @@ public class PortalImpl implements Portal {
 			if (exception instanceof PrincipalException) {
 				status = HttpServletResponse.SC_FORBIDDEN;
 			}
-			else {
-				Class<?> clazz = exception.getClass();
-
-				String name = clazz.getName();
-
-				name = name.substring(name.lastIndexOf(CharPool.PERIOD) + 1);
-
-				if (name.startsWith("NoSuch") && name.endsWith("Exception")) {
-					status = HttpServletResponse.SC_NOT_FOUND;
-				}
+			else if (exception instanceof NoSuchModelException) {
+				status = HttpServletResponse.SC_NOT_FOUND;
 			}
 
 			if (status == 0) {
@@ -6075,7 +6068,7 @@ public class PortalImpl implements Portal {
 
 			httpServletResponse.setStatus(status);
 
-			if (_isNoSuchException(exception.getClass())) {
+			if (exception instanceof NoSuchModelException) {
 				httpServletRequest.setAttribute(
 					NoSuchLayoutException.class.getName(), Boolean.TRUE);
 			}
@@ -8017,18 +8010,6 @@ public class PortalImpl implements Portal {
 		}
 
 		return virtualHostnames.firstKey();
-	}
-
-	private boolean _isNoSuchException(Class<?> clazz) {
-		String name = clazz.getName();
-
-		name = name.substring(name.lastIndexOf(CharPool.PERIOD) + 1);
-
-		if (name.startsWith("NoSuch") && name.endsWith("Exception")) {
-			return true;
-		}
-
-		return false;
 	}
 
 	private boolean _isSignedIn(HttpServletRequest httpServletRequest) {

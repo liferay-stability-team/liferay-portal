@@ -5,14 +5,9 @@
 
 package com.liferay.portal.util;
 
-import com.liferay.document.library.kernel.exception.NoSuchFileEntryException;
-import com.liferay.document.library.kernel.exception.NoSuchFileException;
-import com.liferay.document.library.kernel.exception.NoSuchFolderException;
 import com.liferay.petra.io.BigEndianCodec;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
-import com.liferay.portal.kernel.exception.NoSuchLayoutException;
-import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.model.LayoutConstants;
@@ -730,23 +725,6 @@ public class PortalImplUnitTest {
 	}
 
 	@Test
-	public void testIsNoSuchExceptionReturnsFalseForNonNoSuchException() {
-		Assert.assertFalse(
-			_invokeIsNoSuchException(IllegalArgumentException.class));
-		Assert.assertFalse(_invokeIsNoSuchException(PortalException.class));
-		Assert.assertFalse(_invokeIsNoSuchException(RuntimeException.class));
-	}
-
-	@Test
-	public void testIsNoSuchExceptionReturnsTrueForNoSuchException() {
-		Assert.assertTrue(
-			_invokeIsNoSuchException(NoSuchFileEntryException.class));
-		Assert.assertTrue(_invokeIsNoSuchException(NoSuchFileException.class));
-		Assert.assertTrue(_invokeIsNoSuchException(NoSuchFolderException.class));
-		Assert.assertTrue(_invokeIsNoSuchException(NoSuchLayoutException.class));
-	}
-
-	@Test
 	public void testIsSecureWithSecureRequest() {
 		MockHttpServletRequest mockHttpServletRequest =
 			new MockHttpServletRequest();
@@ -1029,12 +1007,6 @@ public class PortalImplUnitTest {
 		mockHttpServletRequest.setServerName("serverName");
 
 		return mockHttpServletRequest;
-	}
-
-	private boolean _invokeIsNoSuchException(Class<?> clazz) {
-		return ReflectionTestUtil.invoke(
-			_portalImpl, "_isNoSuchException", new Class<?>[] {Class.class},
-			clazz);
 	}
 
 	private void _restorePropsValuesValue() {
