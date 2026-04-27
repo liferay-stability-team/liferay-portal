@@ -64,6 +64,22 @@ public class DDMFormValuesConverterUtil {
 		List<DDMFormFieldValue> newDDMFormFieldValues = new ArrayList<>();
 
 		for (DDMFormField ddmFormField : ddmFormFields) {
+			if (StringUtil.equals(
+					ddmFormField.getType(),
+					DDMFormFieldTypeConstants.FIELDSET)) {
+
+				DDMFormFieldValue ddmFormFieldValue =
+					_createDefaultDDMFormFieldValue(ddmFormField);
+
+				_populateNestedValues(
+					ddmFormField, ddmFormFieldValue, ddmFormFieldValuesMap);
+
+				newDDMFormFieldValues.addAll(
+					ddmFormFieldValue.getNestedDDMFormFieldValues());
+
+				continue;
+			}
+
 			List<DDMFormFieldValue> ddmFormFieldValues =
 				ddmFormFieldValuesMap.get(ddmFormField.getName());
 
