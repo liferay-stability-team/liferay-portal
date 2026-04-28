@@ -118,9 +118,11 @@ public class PropagateContributedFragmentEntriesChangesMVCActionCommand
 							fragmentEntry.getFragmentEntryKey()));
 				});
 			actionableDynamicQuery.setPerformActionMethod(
-				(FragmentEntryLink fragmentEntryLink) ->
+				(FragmentEntryLink fragmentEntryLink) -> {
 					_fragmentEntryLinkLocalService.updateLatestChanges(
-						fragmentEntry, fragmentEntryLink));
+						fragmentEntry, _fragmentEntryLinkLocalService.getFragmentEntryLink(
+							fragmentEntryLink.getFragmentEntryLinkId()));
+				});
 
 			actionableDynamicQuery.performActions();
 		}
