@@ -6,26 +6,42 @@
 package com.liferay.dynamic.data.mapping.service.test;
 
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
+import com.liferay.depot.constants.DepotConstants;
+import com.liferay.depot.model.DepotEntry;
+import com.liferay.depot.service.DepotEntryGroupRelLocalService;
+import com.liferay.depot.service.DepotEntryLocalService;
 import com.liferay.dynamic.data.mapping.constants.DDMTemplateConstants;
+import com.liferay.dynamic.data.mapping.item.selector.DDMTemplateItemSelectorCriterion;
 import com.liferay.dynamic.data.mapping.model.DDMStructure;
 import com.liferay.dynamic.data.mapping.model.DDMTemplate;
+import com.liferay.dynamic.data.mapping.service.DDMStructureLocalService;
 import com.liferay.dynamic.data.mapping.service.DDMTemplateLocalService;
 import com.liferay.dynamic.data.mapping.service.DDMTemplateService;
 import com.liferay.dynamic.data.mapping.service.DDMTemplateServiceUtil;
+import com.liferay.dynamic.data.mapping.test.util.DDMStructureTestUtil;
+import com.liferay.dynamic.data.mapping.test.util.DDMTemplateTestUtil;
+import com.liferay.journal.model.JournalArticle;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
+import com.liferay.portal.kernel.dao.search.SearchContainer;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.ResourceConstants;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.model.role.RoleConstants;
+import com.liferay.portal.kernel.module.util.BundleUtil;
+import com.liferay.portal.kernel.module.util.SystemBundleUtil;
 import com.liferay.portal.kernel.security.auth.PrincipalException;
 import com.liferay.portal.kernel.security.auth.PrincipalThreadLocal;
 import com.liferay.portal.kernel.security.permission.ActionKeys;
 import com.liferay.portal.kernel.security.permission.PermissionChecker;
 import com.liferay.portal.kernel.security.permission.PermissionCheckerFactoryUtil;
 import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
+import com.liferay.portal.kernel.service.CompanyLocalService;
 import com.liferay.portal.kernel.service.GroupLocalServiceUtil;
 import com.liferay.portal.kernel.template.TemplateConstants;
+import com.liferay.portal.kernel.test.ReflectionTestUtil;
+import com.liferay.portal.kernel.test.portlet.MockLiferayPortletURL;
+import com.liferay.portal.kernel.test.portlet.MockLiferayResourceRequest;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
@@ -34,13 +50,23 @@ import com.liferay.portal.kernel.test.util.RoleTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
+import com.liferay.portal.kernel.theme.ThemeDisplay;
+import com.liferay.portal.kernel.util.HashMapBuilder;
+import com.liferay.portal.kernel.util.JavaConstants;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.search.test.rule.SearchTestRule;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
+
+import jakarta.portlet.PortletURL;
+
+import jakarta.servlet.http.HttpServletRequest;
+
+import java.lang.reflect.Constructor;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -53,6 +79,8 @@ import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
+import org.osgi.framework.Bundle;
 
 /**
  * @author Rafael Praxedes
@@ -70,7 +98,7 @@ public class DDMTemplateServiceTest extends BaseDDMServiceTestCase {
 	public void setUp() throws Exception {
 		super.setUp();
 
-		_group = GroupTestUtil.addGroup();
+		_group1 = GroupTestUtil.addGroup();
 		_recordSetClassNameId = PortalUtil.getClassNameId(
 			DDL_RECORD_SET_CLASS_NAME);
 		_structureClassNameId = PortalUtil.getClassNameId(DDMStructure.class);
@@ -91,7 +119,7 @@ public class DDMTemplateServiceTest extends BaseDDMServiceTestCase {
 	public void testAddTemplateWithoutAddPermission() throws Exception {
 		try {
 			UserTestUtil.setUser(
-				UserTestUtil.addGroupUser(_group, RoleConstants.SITE_MEMBER));
+				UserTestUtil.addGroupUser(_group1, RoleConstants.SITE_MEMBER));
 
 			_ddmTemplateService.addTemplate(
 				RandomTestUtil.randomString(), group.getGroupId(),
@@ -153,7 +181,7 @@ public class DDMTemplateServiceTest extends BaseDDMServiceTestCase {
 
 		try {
 			UserTestUtil.setUser(
-				UserTestUtil.addGroupUser(_group, RoleConstants.SITE_MEMBER));
+				UserTestUtil.addGroupUser(_group1, RoleConstants.SITE_MEMBER));
 
 			_ddmTemplateService.deleteTemplate(
 				template.getExternalReferenceCode(), template.getGroupId());
@@ -216,7 +244,7 @@ public class DDMTemplateServiceTest extends BaseDDMServiceTestCase {
 
 		try {
 			UserTestUtil.setUser(
-				UserTestUtil.addGroupUser(_group, RoleConstants.SITE_MEMBER));
+				UserTestUtil.addGroupUser(_group1, RoleConstants.SITE_MEMBER));
 
 			_ddmTemplateService.getTemplateByExternalReferenceCode(
 				template.getExternalReferenceCode(), template.getGroupId());
@@ -507,7 +535,7 @@ public class DDMTemplateServiceTest extends BaseDDMServiceTestCase {
 
 		List<DDMTemplate> ddmTemplates = DDMTemplateServiceUtil.search(
 			TestPropsValues.getCompanyId(),
-			new long[] {group.getGroupId(), _group.getGroupId()},
+			new long[] {group.getGroupId(), _group1.getGroupId()},
 			new long[] {_structureClassNameId},
 			new long[] {structure.getStructureId()}, _recordSetClassNameId,
 			StringPool.BLANK, DDMTemplateConstants.TEMPLATE_TYPE_FORM,
@@ -586,7 +614,7 @@ public class DDMTemplateServiceTest extends BaseDDMServiceTestCase {
 
 		List<DDMTemplate> ddmTemplates = DDMTemplateServiceUtil.search(
 			TestPropsValues.getCompanyId(),
-			new long[] {group.getGroupId(), _group.getGroupId()},
+			new long[] {group.getGroupId(), _group1.getGroupId()},
 			new long[] {_structureClassNameId},
 			new long[] {structure.getStructureId()}, _recordSetClassNameId,
 			name, description, type, mode, language,
@@ -594,6 +622,98 @@ public class DDMTemplateServiceTest extends BaseDDMServiceTestCase {
 			QueryUtil.ALL_POS, null);
 
 		Assert.assertEquals(ddmTemplates.toString(), 3, ddmTemplates.size());
+	}
+
+	@Test
+	public void testSearchContainerExcludesCrossSiteTemplatesForAssetLibraryStructure()
+		throws Exception {
+
+		Group group2 = GroupTestUtil.addGroup();
+
+		_depotEntry = _depotEntryLocalService.addDepotEntry(
+			HashMapBuilder.put(
+				LocaleUtil.getDefault(), RandomTestUtil.randomString()
+			).build(),
+			Collections.emptyMap(), DepotConstants.TYPE_ASSET_LIBRARY,
+			ServiceContextTestUtil.getServiceContext());
+
+		_depotEntryGroupRelLocalService.addDepotEntryGroupRel(
+			_depotEntry.getDepotEntryId(), _group1.getGroupId());
+		_depotEntryGroupRelLocalService.addDepotEntryGroupRel(
+			_depotEntry.getDepotEntryId(), group2.getGroupId());
+
+		DDMStructure ddmStructure = DDMStructureTestUtil.addStructure(
+			_depotEntry.getGroupId(), JournalArticle.class.getName());
+
+		String script = getTestTemplateScript(TemplateConstants.LANG_TYPE_FTL);
+
+		DDMTemplate group1Template = DDMTemplateTestUtil.addTemplate(
+			_group1.getGroupId(), ddmStructure.getStructureId(),
+			ddmStructure.getClassNameId(), TemplateConstants.LANG_TYPE_FTL,
+			script, LocaleUtil.getSiteDefault());
+		DDMTemplate group2Template = DDMTemplateTestUtil.addTemplate(
+			group2.getGroupId(), ddmStructure.getStructureId(),
+			ddmStructure.getClassNameId(), TemplateConstants.LANG_TYPE_FTL,
+			script, LocaleUtil.getSiteDefault());
+		DDMTemplate depotTemplate = DDMTemplateTestUtil.addTemplate(
+			_depotEntry.getGroupId(), ddmStructure.getStructureId(),
+			ddmStructure.getClassNameId(), TemplateConstants.LANG_TYPE_FTL,
+			script, LocaleUtil.getSiteDefault());
+
+		DDMTemplateItemSelectorCriterion ddmTemplateItemSelectorCriterion =
+			new DDMTemplateItemSelectorCriterion();
+
+		ddmTemplateItemSelectorCriterion.setDDMStructureId(
+			ddmStructure.getStructureId());
+
+		ThemeDisplay themeDisplay = new ThemeDisplay();
+
+		themeDisplay.setCompany(
+			_companyLocalService.getCompany(TestPropsValues.getCompanyId()));
+		themeDisplay.setScopeGroupId(group2.getGroupId());
+		themeDisplay.setSiteGroupId(_group1.getGroupId());
+		themeDisplay.setUser(TestPropsValues.getUser());
+
+		MockLiferayResourceRequest mockLiferayResourceRequest =
+			new MockLiferayResourceRequest();
+
+		HttpServletRequest httpServletRequest =
+			PortalUtil.getHttpServletRequest(mockLiferayResourceRequest);
+
+		httpServletRequest.setAttribute(
+			JavaConstants.JAKARTA_PORTLET_REQUEST, mockLiferayResourceRequest);
+		httpServletRequest.setAttribute(WebKeys.THEME_DISPLAY, themeDisplay);
+
+		Bundle bundle = BundleUtil.getBundle(
+			SystemBundleUtil.getBundleContext(),
+			"com.liferay.dynamic.data.mapping.item.selector.web");
+
+		Class<?> clazz = bundle.loadClass(
+			"com.liferay.dynamic.data.mapping.item.selector.web.internal." +
+				"DDMTemplateItemSelectorViewDescriptor");
+
+		Constructor<?> constructor = clazz.getConstructor(
+			DDMStructureLocalService.class,
+			DDMTemplateItemSelectorCriterion.class, HttpServletRequest.class,
+			PortletURL.class);
+
+		Object ddmTemplateItemSelectorViewDescriptor = constructor.newInstance(
+			_ddmStructureLocalService, ddmTemplateItemSelectorCriterion,
+			httpServletRequest, new MockLiferayPortletURL());
+
+		SearchContainer<DDMTemplate> searchContainer =
+			ReflectionTestUtil.invoke(
+				ddmTemplateItemSelectorViewDescriptor, "getSearchContainer",
+				new Class<?>[0]);
+
+		List<DDMTemplate> ddmTemplates = searchContainer.getResults();
+
+		Assert.assertTrue(
+			ddmTemplates.toString(), ddmTemplates.contains(group1Template));
+		Assert.assertTrue(
+			ddmTemplates.toString(), ddmTemplates.contains(depotTemplate));
+		Assert.assertFalse(
+			ddmTemplates.toString(), ddmTemplates.contains(group2Template));
 	}
 
 	@Test
@@ -626,7 +746,7 @@ public class DDMTemplateServiceTest extends BaseDDMServiceTestCase {
 
 		int count = DDMTemplateServiceUtil.searchCount(
 			TestPropsValues.getCompanyId(),
-			new long[] {group.getGroupId(), _group.getGroupId()},
+			new long[] {group.getGroupId(), _group1.getGroupId()},
 			new long[] {_structureClassNameId},
 			new long[] {structure.getStructureId()}, _recordSetClassNameId,
 			StringUtil.randomString(), description, type, mode, language,
@@ -739,7 +859,7 @@ public class DDMTemplateServiceTest extends BaseDDMServiceTestCase {
 
 		int count = DDMTemplateServiceUtil.searchCount(
 			TestPropsValues.getCompanyId(),
-			new long[] {group.getGroupId(), _group.getGroupId()},
+			new long[] {group.getGroupId(), _group1.getGroupId()},
 			new long[] {_structureClassNameId},
 			new long[] {structure.getStructureId()}, _recordSetClassNameId,
 			name, description, type, mode, language,
@@ -769,13 +889,28 @@ public class DDMTemplateServiceTest extends BaseDDMServiceTestCase {
 	private static long _structureClassNameId;
 
 	@Inject
+	private CompanyLocalService _companyLocalService;
+
+	@Inject
+	private DDMStructureLocalService _ddmStructureLocalService;
+
+	@Inject
 	private DDMTemplateLocalService _ddmTemplateLocalService;
 
 	@Inject
 	private DDMTemplateService _ddmTemplateService;
 
 	@DeleteAfterTestRun
-	private Group _group;
+	private DepotEntry _depotEntry;
+
+	@Inject
+	private DepotEntryGroupRelLocalService _depotEntryGroupRelLocalService;
+
+	@Inject
+	private DepotEntryLocalService _depotEntryLocalService;
+
+	@DeleteAfterTestRun
+	private Group _group1;
 
 	private String _originalName;
 	private PermissionChecker _originalPermissionChecker;
