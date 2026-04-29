@@ -322,11 +322,29 @@ public class JournalArticleUtil {
 			article = journalArticleService.getArticle(
 				groupId, articleId, version);
 
+			int workflowAction = ParamUtil.getInteger(
+				uploadPortletRequest, "workflowAction",
+				WorkflowConstants.ACTION_PUBLISH);
+
 			if (article.isDraft() && (version == 1.0) &&
 				(displayDateYear == 0)) {
 
 				Calendar calendar = CalendarFactoryUtil.getCalendar(
 					serviceContext.getTimeZone());
+
+				displayDateMinute = calendar.get(Calendar.MINUTE);
+				displayDateHour = calendar.get(Calendar.HOUR_OF_DAY);
+				displayDateDay = calendar.get(Calendar.DAY_OF_MONTH);
+				displayDateMonth = calendar.get(Calendar.MONTH);
+				displayDateYear = calendar.get(Calendar.YEAR);
+			}
+			else if ((workflowAction == WorkflowConstants.ACTION_SAVE_DRAFT) &&
+				(displayDateYear == 0) && (article.getDisplayDate() != null)) {
+
+				Calendar calendar = CalendarFactoryUtil.getCalendar(
+					serviceContext.getTimeZone());
+
+				calendar.setTime(article.getDisplayDate());
 
 				displayDateMinute = calendar.get(Calendar.MINUTE);
 				displayDateHour = calendar.get(Calendar.HOUR_OF_DAY);
