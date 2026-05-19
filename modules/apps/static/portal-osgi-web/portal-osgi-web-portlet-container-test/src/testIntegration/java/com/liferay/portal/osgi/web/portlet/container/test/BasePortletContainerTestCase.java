@@ -41,7 +41,7 @@ import org.osgi.framework.ServiceRegistration;
 /**
  * @author Raymond Augé
  */
-public abstract class BasePortletContainerTestCase {
+public abstract class 	BasePortletContainerTestCase {
 
 	@ClassRule
 	@Rule
