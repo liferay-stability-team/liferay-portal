@@ -17,6 +17,7 @@ import com.liferay.portal.search.document.DocumentBuilder;
 import com.liferay.portal.search.document.DocumentBuilderFactory;
 import com.liferay.portal.search.engine.adapter.document.UpdateByQueryDocumentRequest;
 import com.liferay.portal.search.engine.adapter.document.UpdateDocumentRequest;
+import com.liferay.portal.search.engine.adapter.index.RefreshIndexRequest;
 import com.liferay.portal.search.index.IndexNameBuilder;
 import com.liferay.portal.search.query.BooleanQuery;
 import com.liferay.portal.search.query.QueriesUtil;
@@ -399,17 +400,21 @@ public class TaskWorkflowMetricsIndexerImpl
 					ScriptType.INLINE
 				);
 
+				String instanceIndexName = WorkflowMetricsIndex.getIndexName(
+					_indexNameBuilder,
+					WorkflowMetricsIndexNameConstants.SUFFIX_INSTANCE,
+					updateTaskRequest.getCompanyId());
+
+				searchEngineAdapter.execute(
+					new RefreshIndexRequest(instanceIndexName));
+
 				UpdateByQueryDocumentRequest updateByQueryDocumentRequest =
 					new UpdateByQueryDocumentRequest(
 						QueriesUtil.nested(
 							"tasks",
 							QueriesUtil.term(
 								"tasks.taskId", updateTaskRequest.getTaskId())),
-						scriptBuilder.build(),
-						WorkflowMetricsIndex.getIndexName(
-							_indexNameBuilder,
-							WorkflowMetricsIndexNameConstants.SUFFIX_INSTANCE,
-							updateTaskRequest.getCompanyId()));
+						scriptBuilder.build(), instanceIndexName);
 
 				updateByQueryDocumentRequest.setRefresh(true);
 
