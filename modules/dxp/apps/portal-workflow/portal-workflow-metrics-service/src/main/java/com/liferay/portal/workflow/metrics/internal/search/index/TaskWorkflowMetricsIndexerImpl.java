@@ -429,7 +429,15 @@ public class TaskWorkflowMetricsIndexerImpl
 			return;
 		}
 
+		String instanceIndexName = WorkflowMetricsIndex.getIndexName(
+			_indexNameBuilder,
+			WorkflowMetricsIndexNameConstants.SUFFIX_INSTANCE,
+			companyId);
+
 		ScriptBuilder scriptBuilder = Scripts.INSTANCE.builder();
+
+		searchEngineAdapter.execute(
+			new RefreshIndexRequest(instanceIndexName));
 
 		searchEngineAdapter.execute(
 			new UpdateByQueryDocumentRequest(
@@ -447,10 +455,7 @@ public class TaskWorkflowMetricsIndexerImpl
 				).scriptType(
 					ScriptType.INLINE
 				).build(),
-				WorkflowMetricsIndex.getIndexName(
-					_indexNameBuilder,
-					WorkflowMetricsIndexNameConstants.SUFFIX_INSTANCE,
-					companyId)));
+				instanceIndexName));
 	}
 
 	private String _getAssigneeName(List<Assignment> assignments) {
