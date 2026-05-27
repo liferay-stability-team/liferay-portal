@@ -18,6 +18,8 @@ import com.liferay.dynamic.data.mapping.model.DDMStructure;
 import com.liferay.dynamic.data.mapping.storage.StorageType;
 import com.liferay.dynamic.data.mapping.test.util.DDMStructureTestHelper;
 import com.liferay.headless.delivery.client.dto.v1_0.ContentStructure;
+import com.liferay.headless.delivery.client.dto.v1_0.ContentStructureField;
+import com.liferay.headless.delivery.client.dto.v1_0.Option;
 import com.liferay.headless.delivery.client.pagination.Page;
 import com.liferay.journal.model.JournalArticle;
 import com.liferay.portal.kernel.model.Group;
@@ -40,6 +42,24 @@ import org.junit.runner.RunWith;
 @RunWith(Arquillian.class)
 public class ContentStructureResourceTest
 	extends BaseContentStructureResourceTestCase {
+
+	@Override
+	@Test
+	public void testGetContentStructure() throws Exception {
+		super.testGetContentStructure();
+
+		DDMStructure ddmStructure = _addDDMStructure(
+			_portal.getClassNameId(JournalArticle.class), testGroup,
+			RandomTestUtil.randomString(), "test-ddm-structure-radio.json");
+
+		Option[] options = _getOptions(
+			contentStructureResource.getContentStructure(
+				ddmStructure.getStructureId()));
+
+		Assert.assertEquals("OptionReference1", options[0].getValue());
+		Assert.assertEquals("OptionReference2", options[1].getValue());
+		Assert.assertEquals("OptionReference3", options[2].getValue());
+	}
 
 	@Test
 	public void testGetSiteContentStructuresPageSearch() throws Exception {
@@ -166,13 +186,20 @@ public class ContentStructureResourceTest
 			long classNameId, Group group, String name)
 		throws Exception {
 
+		return _addDDMStructure(
+			classNameId, group, name, "test-ddm-structure.json");
+	}
+
+	private DDMStructure _addDDMStructure(
+			long classNameId, Group group, String name, String fileName)
+		throws Exception {
+
 		DDMStructureTestHelper ddmStructureTestHelper =
 			new DDMStructureTestHelper(classNameId, group);
 
 		return ddmStructureTestHelper.addStructure(
 			classNameId, RandomTestUtil.randomString(), name,
-			RandomTestUtil.randomString(),
-			_deserialize(_read("test-ddm-structure.json")),
+			RandomTestUtil.randomString(), _deserialize(_read(fileName)),
 			StorageType.DEFAULT.getValue(), DDMStructureConstants.TYPE_DEFAULT);
 	}
 
@@ -185,6 +212,23 @@ public class ContentStructureResourceTest
 				_jsonDDMFormDeserializer.deserialize(builder.build());
 
 		return ddmFormDeserializerDeserializeResponse.getDDMForm();
+	}
+
+	private Option[] _getOptions(ContentStructure contentStructure) {
+		ContentStructureField[] contentStructureFields =
+			contentStructure.getContentStructureFields();
+
+		for (ContentStructureField contentStructureField :
+				contentStructureFields) {
+
+			Option[] options = contentStructureField.getOptions();
+
+			if ((options != null) && (options.length > 0)) {
+				return options;
+			}
+		}
+
+		return new Option[0];
 	}
 
 	private String _read(String fileName) throws Exception {
