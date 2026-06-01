@@ -9,6 +9,7 @@ import com.liferay.depot.constants.DepotConstants;
 import com.liferay.depot.model.DepotEntry;
 import com.liferay.depot.service.DepotEntryLocalServiceUtil;
 import com.liferay.document.library.kernel.exception.NoSuchFolderException;
+import com.liferay.document.library.kernel.model.DLFolderConstants;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.model.Group;
@@ -56,6 +57,28 @@ public class DLFolderUtil {
 			DepotEntry::getGroupId);
 
 		if (!groupConnectedDepotEntries.contains(groupId)) {
+			throw new NoSuchFolderException("{folderId=" + folderId + "}");
+		}
+	}
+
+	public static void validateFolder(Folder folder, long rootFolderId)
+		throws PortalException {
+
+		if ((folder == null) ||
+			(rootFolderId == DLFolderConstants.DEFAULT_PARENT_FOLDER_ID)) {
+
+			return;
+		}
+
+		long folderId = folder.getFolderId();
+
+		if (folderId == rootFolderId) {
+			return;
+		}
+
+		List<Long> ancestorFolderIds = folder.getAncestorFolderIds();
+
+		if (!ancestorFolderIds.contains(rootFolderId)) {
 			throw new NoSuchFolderException("{folderId=" + folderId + "}");
 		}
 	}
