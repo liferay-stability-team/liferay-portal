@@ -51,6 +51,7 @@ import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.LocaleUtil;
+import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
 import com.liferay.portal.odata.entity.EntityModel;
 import com.liferay.portal.search.aggregation.Aggregations;
@@ -251,6 +252,14 @@ public class StructuredContentResourceImpl
 		DDMStructure ddmStructure = _ddmStructureService.getStructure(
 			structuredContent.getContentStructureId());
 
+		Long structuredContentFolderId =
+			structuredContent.getStructuredContentFolderId();
+
+		if (Validator.isNull(structuredContentFolderId)) {
+			structuredContentFolderId =
+				JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID;
+		}
+
 		Map<Locale, String> titleMap = LocalizedMapUtil.getLocalizedMap(
 			contextAcceptLanguage.getPreferredLocale(),
 			structuredContent.getTitle(), structuredContent.getTitle_i18n());
@@ -304,8 +313,8 @@ public class StructuredContentResourceImpl
 
 		return _toExtensionStructuredContent(
 			_journalArticleService.addArticle(
-				null, siteId, JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID,
-				0, 0, null, true, titleMap, descriptionMap, friendlyUrlMap,
+				null, siteId, structuredContentFolderId, 0, 0, null, true,
+				titleMap, descriptionMap, friendlyUrlMap,
 				StructuredContentUtil.getJournalArticleContent(
 					_ddm,
 					DDMFormValuesUtil.toDDMFormValues(
