@@ -51,6 +51,16 @@ Run everything from this directory.
 
 Start with `review` or `--dry-run check` on a single pull request to see the output before you let it comment. A full review takes a few minutes and uses your Claude usage.
 
+## The brian-review skill
+
+For interactive use there is a Claude Code skill, `brian-review`, that wraps the reviewer. From a Claude Code session in a `liferay-portal` checkout, run it with a pull request URL.
+
+```
+/brian-review https://github.com/<org>/liferay-portal/pull/<number>
+```
+
+The skill takes the organization from the URL and works against any `liferay-portal` repository, not only the stability team, by overriding `_REPO` and `_GIT_REMOTE` for that run. Before reviewing it confirms the reviewer and the setup are in place, and when either is missing it asks whether to fetch the `pr-review` branch or run `setup.sh` for you rather than only printing instructions. When the pull request was already reviewed it reviews again only when there are new commits since the last comment, and otherwise asks first. Like the `review` command it reviews and comments only, and never closes a pull request.
+
 ## How it works
 
 The reviewer fetches the pull request branch from the `stability` remote, builds a filtered diff that excludes generated and binary files, and then launches Claude inside a bubblewrap sandbox. The sandbox exposes only this directory, a read only copy of the repository for `git grep`, the diff, and your Claude install and credentials. All of the sandbox network traffic leaves through the proxy on port 8118. Claude returns a JSON object with a rejection chance and a list of violations, which the reviewer formats into the comment above.
@@ -59,13 +69,28 @@ When you run the looping `check` command, the reviewer also closes any open pull
 
 ## Configuration
 
-The settings live in the block at the bottom of `run.sh`.
+The settings are the variables in the block at the bottom of `run.sh`. Each one reads an environment variable of the same name and falls back to the default below, so you can override any of them for a single run without editing the file. This is how the `brian-review` skill points the reviewer at a different organization.
 
-- `_REPO` is the repository the reviewer reads and comments on.
-- `_GIT_REMOTE` and `_BASE_BRANCH` name the git remote and base branch used to fetch pull requests and compute the diff.
-- `_MODELS` is the list of models to run. Only `sonnet-4.6`, which uses the `claude` command, works out of the box. The other entries require `opencode`.
-- `_HTTPS_PROXY` is the proxy address. Set it to the empty string to send Claude traffic directly, without the sandbox proxy.
-- `_REVIEW_TIMEOUT_MINUTES` bounds a single review.
+```
+_REPO=other-org/liferay-portal _GIT_REMOTE=other ./run.sh review 123
+```
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `_REPO` | `liferay-stability-team/liferay-portal` | The repository the reviewer reads pull requests from and comments on. |
+| `_GIT_REMOTE` | `stability` | The git remote whose `pull/<n>/head` refs and base branch are fetched. Must point at `_REPO`. |
+| `_BASE_BRANCH` | `master` | The base branch used for the merge base and the reviewed diff. |
+| `_MODELS` | `(sonnet-4.6)` | The models to run, as a bash array. Only `sonnet-4.6` (the `claude` command) works out of the box; the commented entries need `opencode`. Listing more than one runs them in parallel and reports each. |
+| `_HTTPS_PROXY` | `localhost:8118` | The proxy the sandboxed Claude uses. Set it to the empty string to send traffic directly, with no proxy. |
+| `_REVIEW_TIMEOUT_MINUTES` | `20` | The hard timeout for a single review. |
+| `_SANDBOX_HOME` | `${HOME}/.ai_sandbox/home` | The isolated home bound into the sandbox, holding the copied Claude credentials. |
+| `_LIFERAY_PORTAL_DIR` | the repository root | The checkout bound read only into the sandbox for `git grep`. |
+| `_IGNORED_FILENAMES` | `CHANGELOG.md package-lock.json package.json` | Exact file names dropped from the reviewed diff. |
+| `_IGNORED_PATTERNS` | the `Language_*.properties` regex | Path regexes dropped from the diff. |
+| `_IGNORED_SUFFIXES` | `css js jsx lock ...` | File extensions dropped from the diff entirely. |
+| `_NAME_ONLY_SUFFIXES` | `bmp gif ico jpeg jpg png svg webp` | Image extensions included as a file name only, with no content. |
+
+Files marked `@generated` are always excluded from the diff, regardless of these lists.
 
 ## The proxy
 
