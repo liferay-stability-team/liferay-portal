@@ -210,7 +210,7 @@ function _check_pr {
 
 		local conflicts
 
-		conflicts=$(git merge-tree --name-only --write-tree origin/${base_ref} refs/pr-reviewer/${pr_number} 2> /dev/null | sed --quiet "2,/^$/{/^$/!p}" | head --lines=30) || true
+		conflicts=$(git merge-tree --name-only --write-tree ${_GIT_REMOTE}/${base_ref} refs/pr-reviewer/${pr_number} 2> /dev/null | sed --quiet "2,/^$/{/^$/!p}" | head --lines=30) || true
 
 		if [[ -n ${conflicts} ]]
 		then
@@ -478,7 +478,7 @@ function _extract_last_json_block {
 }
 
 function _fetch_pr {
-	timeout 60 git fetch --quiet --force origin pull/${pr_number}/head:refs/pr-reviewer/${pr_number} 2> /dev/null
+	timeout 60 git fetch --quiet --force ${_GIT_REMOTE} +refs/heads/${_BASE_BRANCH}:refs/remotes/${_GIT_REMOTE}/${_BASE_BRANCH} pull/${pr_number}/head:refs/pr-reviewer/${pr_number} 2> /dev/null
 }
 
 function _format_tokens {
@@ -518,7 +518,7 @@ function _get_automatic_code_review_json {
 
 	local diff_range=refs/pr-reviewer/${pr_number}..refs/pr-reviewer/${pr_number}
 
-	local from_commit=$(git merge-base master refs/pr-reviewer/${pr_number} 2> /dev/null)
+	local from_commit=$(git merge-base ${_GIT_REMOTE}/${_BASE_BRANCH} refs/pr-reviewer/${pr_number} 2> /dev/null)
 
 	if [[ -n ${from_commit} ]]
 	then
@@ -687,7 +687,9 @@ function _review_in_sandbox {
 		\
 		bwrap \
 			--as-pid-1 \
-			--bind /home/me/.ai_sandbox/home /home/me \
+			--bind ${_SANDBOX_HOME} ${HOME} \
+			--ro-bind ${HOME}/.local/bin ${HOME}/.local/bin \
+			--ro-bind ${HOME}/.local/share/claude ${HOME}/.local/share/claude \
 			--chdir /tmp \
 			--clearenv \
 			--dev /dev \
@@ -697,15 +699,15 @@ function _review_in_sandbox {
 			--ro-bind "$(pwd)/STYLE.md" /review/STYLE.md \
 			--ro-bind "$(pwd)/rules" /review/rules \
 			--ro-bind "$(pwd)/sandbox-bin" /review/sandbox-bin \
-			--ro-bind /home/me/dev/projects/liferay-portal /review/liferay-portal \
+			--ro-bind ${_LIFERAY_PORTAL_DIR} /review/liferay-portal \
 			--ro-bind ${pr_dir}/pr.diff /review/pr.diff \
 			--ro-bind /etc /etc \
 			--ro-bind /usr /usr \
-			--setenv HOME /home/me \
+			--setenv HOME ${HOME} \
 			--setenv LANG en_US.UTF-8 \
-			--setenv PATH /review/sandbox-bin:/home/me/.local/bin:/home/me/.npm-global/bin:/usr/bin:/bin \
+			--setenv PATH /review/sandbox-bin:${HOME}/.local/bin:${HOME}/.npm-global/bin:/usr/bin:/bin \
 			--setenv TERM xterm-256color \
-			--setenv USER me \
+			--setenv USER $(id --user --name) \
 			--symlink usr/bin /bin \
 			--symlink usr/lib /lib \
 			--symlink usr/lib64 /lib64 \
@@ -778,8 +780,8 @@ Output ONLY valid JSON, with no Markdown code fence and no surrounding prose: {"
 	then
 		raw=$(_review_in_sandbox \
 			env \
-				HTTPS_PROXY=localhost:8118 \
-				HTTP_PROXY=localhost:8118 \
+				HTTPS_PROXY=${_HTTPS_PROXY} \
+				HTTP_PROXY=${_HTTPS_PROXY} \
 				\
 				claude \
 					--add-dir /review \
@@ -834,13 +836,18 @@ Output ONLY valid JSON, with no Markdown code fence and no surrounding prose: {"
 	fi
 }
 
+_BASE_BRANCH=master
+_GIT_REMOTE=stability
+_HTTPS_PROXY=localhost:8118
 _IGNORED_FILENAMES="CHANGELOG.md package-lock.json package.json"
 _IGNORED_PATTERNS="(^|/)Language_.*[.]properties$"
 _IGNORED_SUFFIXES="css js jsx lock lockfile macro path scss snap testcase ts tsx"
+_LIFERAY_PORTAL_DIR=$(git rev-parse --show-toplevel)
 #_MODELS=(deepseek-v4-flash deepseek-v4-pro glm-5 mimo-v2-5 minimax-m2-7)
 _MODELS=(sonnet-4.6)
 _NAME_ONLY_SUFFIXES="bmp gif ico jpeg jpg png svg webp"
-_REPO=brianchandotcom/liferay-portal
+_REPO=liferay-stability-team/liferay-portal
 _REVIEW_TIMEOUT_MINUTES=20
+_SANDBOX_HOME=${HOME}/.ai_sandbox/home
 
 main "${@}"
