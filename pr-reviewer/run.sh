@@ -836,9 +836,9 @@ Output ONLY valid JSON, with no Markdown code fence and no surrounding prose: {"
 	fi
 }
 
-_BASE_BRANCH=master
-_GIT_REMOTE=stability
-_HTTPS_PROXY=localhost:8118
+_BASE_BRANCH=${_BASE_BRANCH:-master}
+_GIT_REMOTE=${_GIT_REMOTE:-stability}
+_HTTPS_PROXY=${_HTTPS_PROXY:-localhost:8118}
 _IGNORED_FILENAMES="CHANGELOG.md package-lock.json package.json"
 _IGNORED_PATTERNS="(^|/)Language_.*[.]properties$"
 _IGNORED_SUFFIXES="css js jsx lock lockfile macro path scss snap testcase ts tsx"
@@ -846,7 +846,7 @@ _LIFERAY_PORTAL_DIR=$(git rev-parse --show-toplevel)
 #_MODELS=(deepseek-v4-flash deepseek-v4-pro glm-5 mimo-v2-5 minimax-m2-7)
 _MODELS=(sonnet-4.6)
 _NAME_ONLY_SUFFIXES="bmp gif ico jpeg jpg png svg webp"
-_REPO=liferay-stability-team/liferay-portal
+_REPO=${_REPO:-liferay-stability-team/liferay-portal}
 _REVIEW_TIMEOUT_MINUTES=20
 _SANDBOX_HOME=${HOME}/.ai_sandbox/home
 
