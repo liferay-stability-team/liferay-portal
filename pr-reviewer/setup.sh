@@ -11,10 +11,9 @@ function main {
 	_check_authentication
 	_build_sandbox_home
 	_add_git_remote
-	_start_proxy
 
 	echo ""
-	echo "Setup complete. From this directory, run:"
+	echo "Setup complete. run.sh starts and stops the proxy on 127.0.0.1:8118 automatically per review. From this directory, run:"
 	echo ""
 	echo "    ./run.sh check          Review every open PR, then poll for new ones"
 	echo "    ./run.sh review <pr>    Review one PR and print its JSON, without commenting"
@@ -98,19 +97,6 @@ function _check_prerequisites {
 
 		exit 1
 	fi
-}
-
-function _start_proxy {
-	if ss --listening --numeric --tcp | grep --quiet "127.0.0.1:8118"
-	then
-		echo "A proxy is already listening on 127.0.0.1:8118."
-
-		return 0
-	fi
-
-	nohup python3 proxy.py > /tmp/pr-reviewer-proxy.log 2>&1 &
-
-	echo "Started the bundled proxy on 127.0.0.1:8118 (log: /tmp/pr-reviewer-proxy.log)."
 }
 
 main "${@}"

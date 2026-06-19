@@ -35,7 +35,7 @@ cd pr-reviewer
 ./setup.sh
 ```
 
-The script verifies the prerequisites, copies your Claude credentials into an isolated sandbox home at `~/.ai_sandbox/home`, adds a `stability` git remote pointing at the team repository, and starts the local proxy on `127.0.0.1:8118`. It does not change your real home directory or your Claude login.
+The script verifies the prerequisites, copies your Claude credentials into an isolated sandbox home at `~/.ai_sandbox/home`, and adds a `stability` git remote pointing at the team repository. It does not change your real home directory or your Claude login. You do not start the proxy yourself: `run.sh` starts and stops it automatically per review.
 
 ## Usage
 
@@ -94,7 +94,9 @@ Files marked `@generated` are always excluded from the diff, regardless of these
 
 ## The proxy
 
-The bundled `proxy.py` is a plain tunnel. It funnels the sandbox traffic through one port but does not restrict where that traffic can go. For real egress control, install privoxy or tinyproxy on `127.0.0.1:8118` with an allowlist that permits only `api.anthropic.com`, and leave `_HTTPS_PROXY` pointed at it. The bundled proxy does not survive a reboot, so rerun `./setup.sh` or start it with `python3 proxy.py` after restarting.
+`run.sh` manages the proxy automatically. At the start of a review it checks `127.0.0.1:8118`: when nothing is listening it starts the bundled `proxy.py`, and it stops that proxy when the run exits. When a proxy is already listening it uses it and leaves it alone, so a long running instance you started yourself is never touched. The sandbox itself is always ephemeral: a fresh bubblewrap process per review that is torn down when the review finishes.
+
+The bundled `proxy.py` is a plain tunnel. It funnels the sandbox traffic through one port but does not restrict where that traffic can go. For real egress control, run privoxy or tinyproxy on `127.0.0.1:8118` with an allowlist that permits only `api.anthropic.com`; `run.sh` will detect it and route through it without managing its lifecycle. To send Claude traffic directly with no proxy at all, set `_HTTPS_PROXY` to the empty string.
 
 ## Troubleshooting
 

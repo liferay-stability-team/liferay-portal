@@ -30,11 +30,10 @@ git checkout FETCH_HEAD -- pr-reviewer .claude/skills/brian-review
 
 ### 2. Ensure setup is done
 
-Setup builds the sandbox home and starts the egress proxy. Check both.
+Setup builds the sandbox home with the copied Claude credentials. The proxy does not need to be running: `run.sh` starts and stops it automatically per review.
 
 ```bash
-if [ -f "${HOME}/.ai_sandbox/home/.claude/.credentials.json" ] && \
-   ss --listening --numeric --tcp | grep --quiet "127.0.0.1:8118"
+if [ -f "${HOME}/.ai_sandbox/home/.claude/.credentials.json" ]
 then
 	echo OK
 else
