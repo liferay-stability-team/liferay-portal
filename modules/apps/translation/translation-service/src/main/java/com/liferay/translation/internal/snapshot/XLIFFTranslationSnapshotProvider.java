@@ -395,7 +395,7 @@ public class XLIFFTranslationSnapshotProvider
 					TextFragment targetTextFragment =
 						targetTextPart.getContent();
 
-					if (targetTextFragment.getText() == null) {
+					if (Validator.isNull(targetTextFragment.getText())) {
 						continue;
 					}
 
@@ -441,12 +441,18 @@ public class XLIFFTranslationSnapshotProvider
 						"There is no translation target");
 				}
 
+				String targetPlainText = targetFragment.getPlainText();
+
+				if (Validator.isNull(targetPlainText)) {
+					continue;
+				}
+
 				unsafeConsumer.accept(
 					new InfoFieldValue<>(
 						_createInfoField(targetLocale, unit.getId()),
 						InfoLocalizedValue.builder(
 						).value(
-							targetLocale, targetFragment.getPlainText()
+							targetLocale, targetPlainText
 						).value(
 							biConsumer -> {
 								if (includeSource) {
@@ -506,14 +512,6 @@ public class XLIFFTranslationSnapshotProvider
 
 				throw new XLIFFFileException.MustBeWellFormed(
 					"Only one translation language per file is permitted");
-			}
-
-			TextContainer targetTextContainer = iTextUnit.getTarget(
-				targetLocaleId);
-
-			if (!textContainer.isEmpty() && targetTextContainer.isEmpty()) {
-				throw new XLIFFFileException.MustBeWellFormed(
-					"There is no translation target");
 			}
 		}
 	}
