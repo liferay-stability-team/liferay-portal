@@ -89,13 +89,13 @@ Map<String, Object> data = new HashMap<String, Object>();
 			ClayDualListBox,
 			{
 				ariaLabels: {
-					transferRTL: '<%= LanguageUtil.format(request, "move-selected-items-from-x-to-x", new Object[] {rightTitle, leftTitle}, false) %>',
-					transferLTR: '<%= LanguageUtil.format(request, "move-selected-items-from-x-to-x", new Object[] {leftTitle, rightTitle}, false) %>'
+					transferRTL: '<%= HtmlUtil.escapeJS(LanguageUtil.format(request, "move-selected-items-from-x-to-x", new Object[] {rightTitle, leftTitle}, false)) %>',
+					transferLTR: '<%= HtmlUtil.escapeJS(LanguageUtil.format(request, "move-selected-items-from-x-to-x", new Object[] {leftTitle, rightTitle}, false)) %>'
 				},
 				items: items,
 				left: {
 					id: '<portlet:namespace /><%= leftBoxName %>',
-					label: '<%= leftTitle %>'
+					label: '<%= HtmlUtil.escapeJS(leftTitle) %>'
 				},
 				leftMaxItems: <%= leftBoxMaxItems %>,
 				onItemsChange: (newItems) => {
@@ -117,7 +117,7 @@ Map<String, Object> data = new HashMap<String, Object>();
 				},
 				right: {
 					id: '<portlet:namespace /><%= rightBoxName %>',
-					label: '<%= rightTitle %>'
+					label: '<%= HtmlUtil.escapeJS(rightTitle) %>'
 				},
 				rightMaxItems: <%= rightBoxMaxItems %>,
 				size: 10,
