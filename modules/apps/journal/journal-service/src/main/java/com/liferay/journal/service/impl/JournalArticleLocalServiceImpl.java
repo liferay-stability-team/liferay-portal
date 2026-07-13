@@ -1486,7 +1486,11 @@ public class JournalArticleLocalServiceImpl
 		for (JournalArticle article : articles) {
 			article.setLayoutUuid(StringPool.BLANK);
 
-			journalArticlePersistence.update(article);
+			article = journalArticlePersistence.update(article);
+
+			_deleteLayoutArticleReferences(article.getPrimaryKey(), layoutUuid);
+			_deleteLayoutArticleReferences(
+				article.getResourcePrimKey(), layoutUuid);
 		}
 	}
 
@@ -7915,6 +7919,23 @@ public class JournalArticleLocalServiceImpl
 		finally {
 			serviceContext.setIndexingEnabled(indexingEnabled);
 		}
+	}
+
+	private void _deleteLayoutArticleReferences(
+		long classPK, String layoutUuid) {
+
+		AssetEntry assetEntry = _assetEntryLocalService.fetchEntry(
+			JournalArticle.class.getName(), classPK);
+
+		if ((assetEntry == null) ||
+			!Objects.equals(layoutUuid, assetEntry.getLayoutUuid())) {
+
+			return;
+		}
+
+		assetEntry.setLayoutUuid(StringPool.BLANK);
+
+		_assetEntryLocalService.updateAssetEntry(assetEntry);
 	}
 
 	private boolean _equals(
