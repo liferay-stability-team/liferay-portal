@@ -65,6 +65,7 @@ import com.liferay.journal.web.internal.display.context.JournalEditDDMStructures
 import com.liferay.journal.web.internal.display.context.JournalEditDDMTemplateDisplayContext;
 import com.liferay.journal.web.internal.helper.JournalDDMTemplateHelper;
 import com.liferay.journal.web.internal.portlet.action.ActionUtil;
+import com.liferay.journal.web.internal.security.permission.resource.DDMTemplatePermission;
 import com.liferay.portal.configuration.module.configuration.ConfigurationProvider;
 import com.liferay.portal.kernel.exception.LocaleException;
 import com.liferay.portal.kernel.exception.PortalException;
@@ -286,8 +287,13 @@ public class JournalPortlet extends MVCPortlet {
 
 			String path = getPath(renderRequest, renderResponse);
 
-			if (Objects.equals(path, "/edit_article.jsp") ||
-				Objects.equals(path, "/view_article_history.jsp")) {
+			if (Objects.equals(path, "/ddm_template/edit_properties.jsp") ||
+				Objects.equals(path, "/edit_ddm_template.jsp")) {
+
+				_checkDDMTemplateUpdatePermission(httpServletRequest);
+			}
+			else if (Objects.equals(path, "/edit_article.jsp") ||
+					 Objects.equals(path, "/view_article_history.jsp")) {
 
 				ActionUtil.getArticle(httpServletRequest);
 			}
@@ -382,6 +388,31 @@ public class JournalPortlet extends MVCPortlet {
 		}
 
 		return false;
+	}
+
+	private void _checkDDMTemplateUpdatePermission(
+			HttpServletRequest httpServletRequest)
+		throws PortalException {
+
+		long ddmTemplateId = ParamUtil.getLong(
+			httpServletRequest, "ddmTemplateId");
+
+		if (ddmTemplateId <= 0) {
+			return;
+		}
+
+		ThemeDisplay themeDisplay =
+			(ThemeDisplay)httpServletRequest.getAttribute(
+				WebKeys.THEME_DISPLAY);
+
+		if (!DDMTemplatePermission.contains(
+				themeDisplay.getPermissionChecker(), ddmTemplateId,
+				ActionKeys.UPDATE)) {
+
+			throw new PrincipalException.MustHavePermission(
+				themeDisplay.getPermissionChecker(),
+				DDMTemplate.class.getName(), ddmTemplateId, ActionKeys.UPDATE);
+		}
 	}
 
 	private void _getFolder(HttpServletRequest httpServletRequest)
