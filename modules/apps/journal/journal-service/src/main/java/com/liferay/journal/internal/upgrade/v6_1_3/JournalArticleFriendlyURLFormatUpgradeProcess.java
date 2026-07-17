@@ -13,6 +13,7 @@ import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.service.ClassNameLocalService;
 import com.liferay.portal.kernel.upgrade.UpgradeProcess;
+import com.liferay.portal.kernel.util.StringUtil;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -62,6 +63,12 @@ public class JournalArticleFriendlyURLFormatUpgradeProcess
 
 				urlTitle = _friendlyURLEntryLocalService.getUniqueUrlTitle(
 					groupId, classNameId, classPK, urlTitle, languageId);
+
+				if (StringUtil.equals(
+						urlTitle, resultSet1.getString("urlTitle"))) {
+
+					continue;
+				}
 
 				preparedStatement2.setLong(1, classPK);
 
