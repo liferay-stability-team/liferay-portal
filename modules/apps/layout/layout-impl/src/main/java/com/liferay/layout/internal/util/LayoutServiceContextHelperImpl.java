@@ -47,6 +47,7 @@ import com.liferay.portal.kernel.util.PropsUtil;
 import com.liferay.portal.kernel.util.PropsValues;
 import com.liferay.portal.kernel.util.ProxyFactory;
 import com.liferay.portal.kernel.util.ProxyUtil;
+import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.theme.ThemeDisplayFactory;
 
@@ -357,6 +358,8 @@ public class LayoutServiceContextHelperImpl
 
 			themeDisplay.setCompany(company);
 
+			String virtualHostname = company.getVirtualHostname();
+
 			if (_layout != null) {
 				themeDisplay.setLanguageId(_layout.getDefaultLanguageId());
 				themeDisplay.setLayout(_layout);
@@ -364,6 +367,13 @@ public class LayoutServiceContextHelperImpl
 				LayoutSet layoutSet = _layout.getLayoutSet();
 
 				themeDisplay.setLayoutSet(layoutSet);
+
+				String layoutSetVirtualHostname =
+					_portal.getDefaultVirtualHostname(true, layoutSet);
+
+				if (Validator.isNotNull(layoutSetVirtualHostname)) {
+					virtualHostname = layoutSetVirtualHostname;
+				}
 
 				themeDisplay.setLayoutTypePortlet(
 					(LayoutTypePortlet)_layout.getLayoutType());
@@ -409,7 +419,7 @@ public class LayoutServiceContextHelperImpl
 			}
 
 			themeDisplay.setPermissionChecker(permissionChecker);
-			themeDisplay.setPortalDomain(company.getVirtualHostname());
+			themeDisplay.setPortalDomain(virtualHostname);
 
 			boolean secure = _isSecure();
 
@@ -417,11 +427,11 @@ public class LayoutServiceContextHelperImpl
 
 			themeDisplay.setPortalURL(
 				_portal.getPortalURL(
-					company.getVirtualHostname(), portalServerPort, secure));
+					virtualHostname, portalServerPort, secure));
 
 			themeDisplay.setRealUser(user);
 			themeDisplay.setScopeGroupId(_group.getGroupId());
-			themeDisplay.setServerName(company.getVirtualHostname());
+			themeDisplay.setServerName(virtualHostname);
 			themeDisplay.setServerPort(portalServerPort);
 			themeDisplay.setSiteGroupId(_group.getGroupId());
 			themeDisplay.setTimeZone(user.getTimeZone());
