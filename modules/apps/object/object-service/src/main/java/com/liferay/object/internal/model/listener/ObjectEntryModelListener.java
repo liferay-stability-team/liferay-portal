@@ -14,6 +14,7 @@ import com.liferay.object.constants.ObjectActionTriggerConstants;
 import com.liferay.object.constants.ObjectFieldConstants;
 import com.liferay.object.entry.util.ObjectEntryPayloadUtil;
 import com.liferay.object.entry.util.ObjectEntryThreadLocal;
+import com.liferay.object.exception.ObjectEntryValuesException;
 import com.liferay.object.field.business.type.ObjectFieldBusinessType;
 import com.liferay.object.field.business.type.ObjectFieldBusinessTypeRegistry;
 import com.liferay.object.model.ObjectDefinition;
@@ -224,9 +225,10 @@ public class ObjectEntryModelListener extends BaseModelListener<ObjectEntry> {
 	}
 
 	private void _addModifiedLocalizedAttributes(
-		List<Attribute> attributes, ObjectField objectField,
-		Map<String, Serializable> originalValues,
-		Map<String, Serializable> values) {
+			List<Attribute> attributes, ObjectField objectField,
+			Map<String, Serializable> originalValues,
+			Map<String, Serializable> values)
+		throws PortalException {
 
 		Map<String, Serializable> originalLocalizedValues = _getLocalizedValues(
 			objectField, originalValues);
@@ -248,9 +250,7 @@ public class ObjectEntryModelListener extends BaseModelListener<ObjectEntry> {
 
 			attributes.add(
 				new Attribute(
-					StringBundler.concat(
-						objectField.getName(), StringPool.OPEN_BRACKET,
-						languageId, StringPool.CLOSE_BRACKET),
+					_getLocalizedAttributeName(languageId, objectField),
 					_getAuditValue(objectField, value),
 					_getAuditValue(objectField, originalValue)));
 		}
@@ -290,8 +290,9 @@ public class ObjectEntryModelListener extends BaseModelListener<ObjectEntry> {
 	}
 
 	private AuditMessage _getAuditMessage(
-		long accountEntryId, String eventType,
-		ObjectDefinition objectDefinition, ObjectEntry objectEntry) {
+			long accountEntryId, String eventType,
+			ObjectDefinition objectDefinition, ObjectEntry objectEntry)
+		throws PortalException {
 
 		AuditMessage auditMessage = AuditMessageBuilder.buildAuditMessage(
 			objectEntry.getGroupId(), accountEntryId,
@@ -306,6 +307,21 @@ public class ObjectEntryModelListener extends BaseModelListener<ObjectEntry> {
 					objectDefinition.getObjectDefinitionId())) {
 
 			Map<String, Serializable> values = objectEntry.getValues();
+
+			if (objectField.isLocalized()) {
+				Map<String, Serializable> localizedValues = _getLocalizedValues(
+					objectField, values);
+
+				for (Map.Entry<String, Serializable> entry :
+						localizedValues.entrySet()) {
+
+					additionalInfoJSONObject.put(
+						_getLocalizedAttributeName(entry.getKey(), objectField),
+						_getAuditValue(objectField, entry.getValue()));
+				}
+
+				continue;
+			}
 
 			additionalInfoJSONObject.put(
 				objectField.getName(),
@@ -416,24 +432,38 @@ public class ObjectEntryModelListener extends BaseModelListener<ObjectEntry> {
 		return value;
 	}
 
-	private Map<String, Serializable> _getLocalizedValues(
-		ObjectField objectField, Map<String, Serializable> values) {
+	private String _getLocalizedAttributeName(
+		String languageId, ObjectField objectField) {
 
-		Map<String, Serializable> localizedValues =
-			(Map<String, Serializable>)values.get(
-				objectField.getI18nObjectFieldName());
+		return StringBundler.concat(
+			objectField.getName(), StringPool.OPEN_BRACKET, languageId,
+			StringPool.CLOSE_BRACKET);
+	}
+
+	private Map<String, Serializable> _getLocalizedValues(
+			ObjectField objectField, Map<String, Serializable> values)
+		throws PortalException {
+
+		Serializable localizedValues = values.get(
+			objectField.getI18nObjectFieldName());
 
 		if (localizedValues == null) {
 			return Collections.emptyMap();
 		}
 
-		return localizedValues;
+		if (!(localizedValues instanceof Map<?, ?>)) {
+			throw new ObjectEntryValuesException.InvalidValue(
+				objectField.getI18nObjectFieldName());
+		}
+
+		return (Map<String, Serializable>)localizedValues;
 	}
 
 	private List<Attribute> _getModifiedAttributes(
-		ObjectDefinition objectDefinition,
-		Map<String, Serializable> originalValues,
-		Map<String, Serializable> values) {
+			ObjectDefinition objectDefinition,
+			Map<String, Serializable> originalValues,
+			Map<String, Serializable> values)
+		throws PortalException {
 
 		List<Attribute> attributes = new ArrayList<>();
 
