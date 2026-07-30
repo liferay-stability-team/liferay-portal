@@ -12,16 +12,20 @@ import {
 	PageHeader,
 } from '../../../../../src/main/resources/META-INF/resources/js/core/components/PageRenderer/DefaultVariant.es';
 
+const mockUseFormState = jest.fn(() => ({portletId: 'test.portlet'}));
+
 jest.mock(
 	'../../../../../src/main/resources/META-INF/resources/js/core/hooks/useForm.es',
 	() => ({
-		useFormState: () => ({
-			portletId: 'test.portlet',
-		}),
+		useFormState: () => mockUseFormState(),
 	})
 );
 
 describe('DefaultVariant Page', () => {
+	afterEach(() => {
+		mockUseFormState.mockReturnValue({portletId: 'test.portlet'});
+	});
+
 	it('renders page container with role="group" and aria attributes', () => {
 		render(
 			<Page
@@ -63,5 +67,29 @@ describe('DefaultVariant Page', () => {
 			'id',
 			'pageDescription1'
 		);
+	});
+
+	it('omits aria-describedby when the Journal web content portlet suppresses the page description', () => {
+		mockUseFormState.mockReturnValue({
+			portletId: '_com_liferay_journal_web_portlet_JournalPortlet_',
+		});
+
+		render(
+			<Page
+				header={
+					<PageHeader
+						description="Page Description"
+						title="Page Title"
+					/>
+				}
+				pageIndex={0}
+			/>
+		);
+
+		const group = screen.getByRole('group');
+
+		expect(group).toHaveAttribute('aria-labelledby', 'pageTitle0');
+		expect(group).not.toHaveAttribute('aria-describedby');
+		expect(screen.queryByText('Page Description')).not.toBeInTheDocument();
 	});
 });

@@ -120,10 +120,19 @@ export function Page({
 	const descriptionId = `pageDescription${pageIndex}`;
 	const titleId = `pageTitle${pageIndex}`;
 
+	const {portletId} = useFormState();
+	const isWebContentPortlet = portletId.includes(
+		JOURNAL_WEB_PORTLET_NAMESPACE
+	);
+
+	const hasTitle = Boolean(Header?.props?.title);
+	const hasDescription =
+		!isWebContentPortlet && Boolean(Header?.props?.description);
+
 	return (
 		<div
-			aria-describedby={descriptionId}
-			aria-labelledby={titleId}
+			aria-describedby={hasDescription ? descriptionId : undefined}
+			aria-labelledby={hasTitle ? titleId : undefined}
 			className="active ddm-form-page lfr-ddm-form-page"
 			data-ddm-page={pageIndex}
 			role="group"
