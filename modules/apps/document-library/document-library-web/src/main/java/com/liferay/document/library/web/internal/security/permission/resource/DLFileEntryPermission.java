@@ -18,12 +18,12 @@ import com.liferay.portal.kernel.security.permission.resource.ModelResourcePermi
 public class DLFileEntryPermission {
 
 	public static void check(
-			PermissionChecker permissionChecker, DLFileEntry fileEntry,
+			PermissionChecker permissionChecker, FileEntry fileEntry,
 			String actionId)
 		throws PortalException {
 
-		ModelResourcePermission<DLFileEntry> modelResourcePermission =
-			_dlFileEntryModelResourcePermissionSnapshot.get();
+		ModelResourcePermission<FileEntry> modelResourcePermission =
+			_fileEntryModelResourcePermissionSnapshot.get();
 
 		modelResourcePermission.check(permissionChecker, fileEntry, actionId);
 	}
