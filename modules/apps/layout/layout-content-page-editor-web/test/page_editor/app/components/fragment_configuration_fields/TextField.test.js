@@ -90,6 +90,47 @@ describe('TextField', () => {
 		expect(input.minLength).toEqual(0);
 	});
 
+	it('marks the input as required when minLength is greater than 0', () => {
+		const {getByLabelText} = renderTextField({
+			validation: {minLength: 5, type: 'text'},
+		});
+
+		const input = getByLabelText(INPUT_NAME);
+
+		expect(input).toBeRequired();
+	});
+
+	it('does not call the onValueSelect callback when the value is empty and minLength is defined', async () => {
+		const onValueSelect = jest.fn();
+		const {getByLabelText} = renderTextField(
+			{validation: {minLength: 5, type: 'text'}},
+			onValueSelect
+		);
+
+		const input = getByLabelText(INPUT_NAME);
+
+		await userEvent.clear(input);
+		fireEvent.blur(input);
+
+		expect(onValueSelect).not.toBeCalled();
+	});
+
+	it('does not call the onValueSelect callback when the value is only whitespace and minLength is defined', async () => {
+		const onValueSelect = jest.fn();
+		const {getByLabelText} = renderTextField(
+			{validation: {minLength: 5, type: 'text'}},
+			onValueSelect
+		);
+
+		const input = getByLabelText(INPUT_NAME);
+
+		await userEvent.clear(input);
+		await userEvent.type(input, '     ');
+		fireEvent.blur(input);
+
+		expect(onValueSelect).not.toBeCalled();
+	});
+
 	it('renders an input with max/min attributes when type is number and it is defined in the validation', () => {
 		const {getByLabelText} = renderTextField({
 			validation: {max: 3, min: 0, type: 'number'},
