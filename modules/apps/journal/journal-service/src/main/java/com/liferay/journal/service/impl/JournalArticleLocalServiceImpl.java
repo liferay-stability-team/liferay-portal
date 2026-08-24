@@ -4147,6 +4147,10 @@ public class JournalArticleLocalServiceImpl
 
 		int oldStatus = article.getStatus();
 
+		article = updateStatus(
+			userId, article.getId(), WorkflowConstants.STATUS_IN_TRASH,
+			new HashMap<>(), new ServiceContext());
+
 		List<JournalArticle> articleVersions =
 			journalArticlePersistence.findByG_A(
 				article.getGroupId(), article.getArticleId());
@@ -4154,17 +4158,25 @@ public class JournalArticleLocalServiceImpl
 		articleVersions = ListUtil.sort(
 			articleVersions, ArticleVersionComparator.getInstance(false));
 
+		long id = article.getId();
+
 		List<ObjectValuePair<Long, Integer>> articleVersionStatusOVPs =
-			new ArrayList<>();
+			TransformUtil.transform(
+				articleVersions,
+				articleVersion -> {
+					int status = articleVersion.getStatus();
 
-		if ((articleVersions != null) && !articleVersions.isEmpty()) {
-			articleVersionStatusOVPs = getArticleVersionStatuses(
-				articleVersions);
-		}
+					if (articleVersion.getId() == id) {
+						status = oldStatus;
+					}
 
-		article = updateStatus(
-			userId, article.getId(), WorkflowConstants.STATUS_IN_TRASH,
-			new HashMap<>(), new ServiceContext());
+					if (status == WorkflowConstants.STATUS_PENDING) {
+						status = WorkflowConstants.STATUS_DRAFT;
+					}
+
+					return new ObjectValuePair<>(
+						articleVersion.getId(), status);
+				});
 
 		// Trash
 
@@ -4187,7 +4199,11 @@ public class JournalArticleLocalServiceImpl
 			articleVersion.setArticleId(trashArticleId);
 			articleVersion.setStatus(WorkflowConstants.STATUS_IN_TRASH);
 
-			journalArticlePersistence.update(articleVersion);
+			articleVersion = journalArticlePersistence.update(articleVersion);
+
+			if (article.equals(articleVersion)) {
+				article = articleVersion;
+			}
 		}
 
 		articleResource.setArticleId(trashArticleId);
@@ -6577,22 +6593,6 @@ public class JournalArticleLocalServiceImpl
 			article.getSmallImageId(), article.getSmallImageURL(),
 			article.getArticleImageURL(themeDisplay), numberOfPages, page,
 			paginate, cacheable);
-	}
-
-	protected List<ObjectValuePair<Long, Integer>> getArticleVersionStatuses(
-		List<JournalArticle> articles) {
-
-		return TransformUtil.transform(
-			articles,
-			article -> {
-				int status = article.getStatus();
-
-				if (status == WorkflowConstants.STATUS_PENDING) {
-					status = WorkflowConstants.STATUS_DRAFT;
-				}
-
-				return new ObjectValuePair<>(article.getId(), status);
-			});
 	}
 
 	protected JournalArticle getFirstArticle(
