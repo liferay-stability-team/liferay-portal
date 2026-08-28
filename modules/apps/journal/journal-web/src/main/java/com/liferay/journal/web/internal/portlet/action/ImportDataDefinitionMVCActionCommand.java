@@ -20,12 +20,15 @@ import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.upload.UploadPortletRequest;
 import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
+import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.WebKeys;
 
 import jakarta.portlet.ActionRequest;
 import jakarta.portlet.ActionResponse;
+
+import java.util.Map;
 
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
@@ -57,9 +60,14 @@ public class ImportDataDefinitionMVCActionCommand extends BaseMVCActionCommand {
 			DataDefinition dataDefinition = DataDefinition.toDTO(
 				FileUtil.read(uploadPortletRequest.getFile("jsonFile")));
 
+			Map<String, Object> nameMap = dataDefinition.getName();
+
 			dataDefinition.setName(
-				() -> HashMapBuilder.<String, Object>put(
-					String.valueOf(themeDisplay.getSiteDefaultLocale()),
+				() -> HashMapBuilder.<String, Object>putAll(
+					nameMap
+				).put(
+					LocaleUtil.toLanguageId(
+						themeDisplay.getSiteDefaultLocale()),
 					ParamUtil.getString(actionRequest, "name")
 				).build());
 
