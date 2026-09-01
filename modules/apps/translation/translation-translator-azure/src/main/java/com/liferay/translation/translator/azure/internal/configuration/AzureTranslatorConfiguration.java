@@ -38,4 +38,7 @@ public interface AzureTranslatorConfiguration {
 	)
 	public String subscriptionKey();
 
+	@Meta.AD(deflt = "", name = "user-agent-header", required = false)
+	public String userAgent();
+
 }

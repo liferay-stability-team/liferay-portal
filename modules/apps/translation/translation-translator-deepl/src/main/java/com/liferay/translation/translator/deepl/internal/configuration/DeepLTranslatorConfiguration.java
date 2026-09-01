@@ -38,6 +38,9 @@ public interface DeepLTranslatorConfiguration {
 	)
 	public String url();
 
+	@Meta.AD(deflt = "", name = "user-agent-header", required = false)
+	public String userAgent();
+
 	@Meta.AD(
 		deflt = "https://api-free.deepl.com/v2/languages",
 		name = "validate-language-url[deepl-translation]", required = false
