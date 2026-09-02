@@ -16,6 +16,7 @@ import com.liferay.portal.kernel.servlet.SessionErrors;
 import com.liferay.portal.kernel.servlet.SessionMessages;
 import com.liferay.portal.kernel.test.portlet.MockLiferayPortletActionRequest;
 import com.liferay.portal.kernel.test.portlet.MockLiferayPortletActionResponse;
+import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.test.log.LogCapture;
@@ -82,6 +83,40 @@ public class ImportDataDefinitionMVCActionCommandTest
 
 		Assert.assertEquals(
 			previousTextFieldName, ddmFormField.getFieldReference());
+	}
+
+	@Test
+	public void testProcessActionWithDifferentDefaultLocale() throws Exception {
+		MockLiferayPortletActionRequest mockLiferayPortletActionRequest =
+			createMockLiferayPortletActionRequest(
+				"data_definition_with_non_default_site_language.json",
+				"Imported Structure");
+
+		setUpUploadPortletRequest(mockLiferayPortletActionRequest);
+
+		_mvcActionCommand.processAction(
+			mockLiferayPortletActionRequest,
+			new MockLiferayPortletActionResponse());
+
+		Assert.assertNotNull(
+			SessionMessages.get(
+				mockLiferayPortletActionRequest,
+				portal.getPortletId(mockLiferayPortletActionRequest) +
+					SessionMessages.KEY_SUFFIX_HIDE_DEFAULT_SUCCESS_MESSAGE));
+		Assert.assertNotNull(
+			SessionMessages.get(
+				mockLiferayPortletActionRequest,
+				"importDataDefinitionSuccessMessage"));
+
+		DataDefinition dataDefinition = getImportedDataDefinition();
+
+		DDMStructure ddmStructure = _ddmStructureLocalService.getStructure(
+			dataDefinition.getId());
+
+		Assert.assertEquals(
+			"Imported Structure", ddmStructure.getName(LocaleUtil.US));
+		Assert.assertEquals(
+			"Estructura Exportada", ddmStructure.getName(LocaleUtil.SPAIN));
 	}
 
 	@Test
