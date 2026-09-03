@@ -5059,6 +5059,12 @@
 					"default": "",
 					"title": "Subscription Key",
 					"type": "string"
+				},
+				"userAgent": {
+					"default": "",
+					"description": "Specify the user agent sent to the translation API. Leave it empty to send Liferay.",
+					"title": "User Agent Header",
+					"type": "string"
 				}
 			},
 			"required": [
@@ -5085,6 +5091,12 @@
 				"url": {
 					"default": "https://api-free.deepl.com/v2/translate",
 					"title": "API URL",
+					"type": "string"
+				},
+				"userAgent": {
+					"default": "",
+					"description": "Specify the user agent sent to the translation API. Leave it empty to send Liferay.",
+					"title": "User Agent Header",
 					"type": "string"
 				},
 				"validateLanguageURL": {
