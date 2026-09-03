@@ -174,7 +174,7 @@ public class DeepLTranslator extends BaseTranslator {
 
 	private String _getUserAgent(String userAgent) {
 		if (Validator.isNull(userAgent)) {
-			return _USER_AGENT;
+			return "Liferay";
 		}
 
 		return userAgent;
@@ -282,8 +282,6 @@ public class DeepLTranslator extends BaseTranslator {
 
 		return translationJSONObject.getString("text");
 	}
-
-	private static final String _USER_AGENT = "Liferay";
 
 	private static final Log _log = LogFactoryUtil.getLog(
 		DeepLTranslator.class);

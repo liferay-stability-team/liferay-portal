@@ -181,13 +181,11 @@ public class AzureTranslator extends BaseTranslator {
 
 	private String _getUserAgent(String userAgent) {
 		if (Validator.isNull(userAgent)) {
-			return _USER_AGENT;
+			return "Liferay";
 		}
 
 		return userAgent;
 	}
-
-	private static final String _USER_AGENT = "Liferay";
 
 	@Reference
 	private ConfigurationProvider _configurationProvider;
