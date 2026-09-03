@@ -180,7 +180,7 @@ public class AzureTranslator extends BaseTranslator {
 	}
 
 	private String _getUserAgent(String userAgent) {
-		if (Validator.isBlank(userAgent)) {
+		if (Validator.isNull(userAgent)) {
 			return _USER_AGENT;
 		}
 
