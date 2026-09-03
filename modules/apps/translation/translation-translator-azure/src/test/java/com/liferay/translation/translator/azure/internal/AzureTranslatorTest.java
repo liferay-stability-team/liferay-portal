@@ -48,7 +48,7 @@ public class AzureTranslatorTest {
 	}
 
 	@Test
-	public void testTranslationWhenUserAgentIsConfigured() throws Exception {
+	public void testTranslateWhenUserAgentIsConfigured() throws Exception {
 		String userAgent = RandomTestUtil.randomString();
 
 		_setUpAzureTranslator(userAgent);
@@ -59,7 +59,7 @@ public class AzureTranslatorTest {
 	}
 
 	@Test
-	public void testTranslationWhenUserAgentIsNotConfigured() throws Exception {
+	public void testTranslateWhenUserAgentIsNotConfigured() throws Exception {
 		_azureTranslator.translate(_getTranslatorPacket("en_US", "ca_ES"));
 
 		Assert.assertEquals(Collections.singletonList("Liferay"), _userAgents);
