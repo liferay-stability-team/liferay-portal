@@ -49,12 +49,13 @@ public class AzureTranslatorTest {
 
 	@Test
 	public void testTranslationWhenUserAgentIsConfigured() throws Exception {
-		_setUpAzureTranslator("Acme Portal");
+		String userAgent = RandomTestUtil.randomString();
+
+		_setUpAzureTranslator(userAgent);
 
 		_azureTranslator.translate(_getTranslatorPacket("en_US", "ca_ES"));
 
-		Assert.assertEquals(
-			Collections.singletonList("Acme Portal"), _userAgents);
+		Assert.assertEquals(Collections.singletonList(userAgent), _userAgents);
 	}
 
 	@Test
@@ -74,6 +75,8 @@ public class AzureTranslatorTest {
 	private TranslatorPacket _getTranslatorPacket(
 		String sourceLanguage, String targetLanguage) {
 
+		String text = RandomTestUtil.randomString();
+
 		return new TranslatorPacket() {
 
 			@Override
@@ -83,7 +86,7 @@ public class AzureTranslatorTest {
 
 			@Override
 			public Map<String, String> getFieldsMap() {
-				return Map.of(_INFO_FIELD_NAME, "Hello, world!");
+				return Map.of(_INFO_FIELD_NAME, text);
 			}
 
 			@Override
@@ -133,13 +136,13 @@ public class AzureTranslatorTest {
 		Mockito.when(
 			azureTranslatorConfiguration.resourceLocation()
 		).thenReturn(
-			"westeurope"
+			RandomTestUtil.randomString()
 		);
 
 		Mockito.when(
 			azureTranslatorConfiguration.subscriptionKey()
 		).thenReturn(
-			"AZURE_subscriptionkey"
+			RandomTestUtil.randomString()
 		);
 
 		Mockito.when(
@@ -175,7 +178,7 @@ public class AzureTranslatorTest {
 
 				options.setResponse(httpResponse);
 
-				return _getTranslationsJSON("Hola, món!");
+				return _getTranslationsJSON(RandomTestUtil.randomString());
 			}
 		);
 

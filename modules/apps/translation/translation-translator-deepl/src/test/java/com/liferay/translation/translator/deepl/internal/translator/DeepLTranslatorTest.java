@@ -90,15 +90,16 @@ public class DeepLTranslatorTest {
 
 	@Test
 	public void testTranslationWhenUserAgentIsConfigured() throws Exception {
-		_setUpDeepLTranslator("Acme Portal");
+		String userAgent = RandomTestUtil.randomString();
+
+		_setUpDeepLTranslator(userAgent);
 
 		_deepLTranslator.translate(
 			_getTranslatorPocket(
 				Map.of("infoField--JournalArticle_title--0", false), "en_US",
 				"ca_ES"));
 
-		Assert.assertEquals(
-			Arrays.asList("Acme Portal", "Acme Portal"), _userAgents);
+		Assert.assertEquals(Arrays.asList(userAgent, userAgent), _userAgents);
 	}
 
 	@Test
