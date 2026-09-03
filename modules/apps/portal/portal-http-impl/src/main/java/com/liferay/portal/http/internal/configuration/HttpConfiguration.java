@@ -20,6 +20,13 @@ import com.liferay.portal.configuration.metatype.annotations.ExtendedObjectClass
 public interface HttpConfiguration {
 
 	@Meta.AD(
+		deflt = "Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv 11.0) like Gecko",
+		description = "default-user-agent-help", name = "default-user-agent",
+		required = false
+	)
+	public String defaultUserAgent();
+
+	@Meta.AD(
 		deflt = "0", description = "keep-alive-timeout-help",
 		name = "keep-alive-timeout", required = false
 	)

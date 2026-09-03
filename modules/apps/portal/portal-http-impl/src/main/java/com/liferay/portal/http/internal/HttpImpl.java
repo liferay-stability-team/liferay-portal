@@ -739,7 +739,8 @@ public class HttpImpl implements Http {
 
 			if (!hasRequestHeader(requestBuilder, HttpHeaders.USER_AGENT)) {
 				requestBuilder.addHeader(
-					HttpHeaders.USER_AGENT, _DEFAULT_USER_AGENT);
+					HttpHeaders.USER_AGENT,
+					_httpConfiguration.defaultUserAgent());
 			}
 
 			if (cookieSpec != null) {
@@ -1068,9 +1069,6 @@ public class HttpImpl implements Http {
 
 		return requestConfigBuilder;
 	}
-
-	private static final String _DEFAULT_USER_AGENT =
-		"Mozilla/5.0 (Windows NT 6.3; Trident/7.0; rv 11.0) like Gecko";
 
 	private static final int _MAX_BYTE_ARRAY_LENGTH = Integer.MAX_VALUE - 8;
 
