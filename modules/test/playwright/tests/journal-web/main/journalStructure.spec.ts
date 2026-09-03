@@ -184,3 +184,52 @@ test(
 		await expect(page.locator('h2.sheet-title')).toHaveText(structureName);
 	}
 );
+
+test(
+	'The content references warning is not hidden behind the toolbar when web content exists for the structure',
+	{
+		tag: '@LPD-104383',
+	},
+	async ({apiHelpers, journalEditStructurePage, page, site}) => {
+		const structureName = getRandomString();
+
+		const structure = await apiHelpers.dataEngine.createStructure(
+			site.id,
+			getDataStructureDefinition({
+				defaultLanguageId: 'en_US',
+				fields: [{name: 'TextFieldTest', repeatable: false}],
+				name: structureName,
+			})
+		);
+
+		await apiHelpers.headlessDelivery.postStructuredContent({
+			contentStructureId: Number(structure.id),
+			datePublished: null,
+			siteId: site.id,
+			title: getRandomString(),
+		});
+
+		await journalEditStructurePage.goto({
+			siteUrl: site.friendlyUrlPath,
+			structureName,
+		});
+
+		const alert = page.locator('.alert-warning').filter({
+			hasText: 'There are content references to this structure',
+		});
+
+		await expect(alert).toBeVisible();
+
+		const alertBoundingBox = await alert.boundingBox();
+		const toolbarBoundingBox = await page
+			.locator('.component-tbar.tbar-article')
+			.boundingBox();
+
+		expect(
+			alertBoundingBox.y,
+			'The alert must start below the fixed toolbar instead of being clipped behind it'
+		).toBeGreaterThanOrEqual(
+			toolbarBoundingBox.y + toolbarBoundingBox.height
+		);
+	}
+);
