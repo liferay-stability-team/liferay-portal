@@ -22,6 +22,7 @@ import com.liferay.translation.translator.TranslatorPacket;
 import com.liferay.translation.translator.deepl.internal.configuration.DeepLTranslatorConfiguration;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -96,11 +97,8 @@ public class DeepLTranslatorTest {
 				Map.of("infoField--JournalArticle_title--0", false), "en_US",
 				"ca_ES"));
 
-		Assert.assertFalse(_userAgents.isEmpty());
-
-		for (String userAgent : _userAgents) {
-			Assert.assertEquals("Acme Portal", userAgent);
-		}
+		Assert.assertEquals(
+			Arrays.asList("Acme Portal", "Acme Portal"), _userAgents);
 	}
 
 	@Test
@@ -110,11 +108,7 @@ public class DeepLTranslatorTest {
 				Map.of("infoField--JournalArticle_title--0", false), "en_US",
 				"ca_ES"));
 
-		Assert.assertFalse(_userAgents.isEmpty());
-
-		for (String userAgent : _userAgents) {
-			Assert.assertEquals("Liferay", userAgent);
-		}
+		Assert.assertEquals(Arrays.asList("Liferay", "Liferay"), _userAgents);
 	}
 
 	private String _getTranslationsJSON(String text) {

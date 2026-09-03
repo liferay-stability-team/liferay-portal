@@ -19,6 +19,7 @@ import com.liferay.translation.translator.TranslatorPacket;
 import com.liferay.translation.translator.azure.internal.configuration.AzureTranslatorConfiguration;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -52,22 +53,15 @@ public class AzureTranslatorTest {
 
 		_azureTranslator.translate(_getTranslatorPacket("en_US", "ca_ES"));
 
-		Assert.assertFalse(_userAgents.isEmpty());
-
-		for (String userAgent : _userAgents) {
-			Assert.assertEquals("Acme Portal", userAgent);
-		}
+		Assert.assertEquals(
+			Collections.singletonList("Acme Portal"), _userAgents);
 	}
 
 	@Test
 	public void testTranslationWhenUserAgentIsNotConfigured() throws Exception {
 		_azureTranslator.translate(_getTranslatorPacket("en_US", "ca_ES"));
 
-		Assert.assertFalse(_userAgents.isEmpty());
-
-		for (String userAgent : _userAgents) {
-			Assert.assertEquals("Liferay", userAgent);
-		}
+		Assert.assertEquals(Collections.singletonList("Liferay"), _userAgents);
 	}
 
 	private String _getTranslationsJSON(String text) {
