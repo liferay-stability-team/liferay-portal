@@ -38,7 +38,10 @@ public interface DeepLTranslatorConfiguration {
 	)
 	public String url();
 
-	@Meta.AD(deflt = "", name = "user-agent-header", required = false)
+	@Meta.AD(
+		deflt = "", description = "user-agent-header-help",
+		name = "user-agent-header", required = false
+	)
 	public String userAgent();
 
 	@Meta.AD(
