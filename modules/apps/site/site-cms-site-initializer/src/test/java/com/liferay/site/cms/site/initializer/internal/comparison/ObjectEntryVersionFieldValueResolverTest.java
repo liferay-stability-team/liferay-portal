@@ -82,6 +82,7 @@ public class ObjectEntryVersionFieldValueResolverTest {
 
 	@Test
 	public void testGetFieldValues() throws Exception {
+		_testGetFieldValuesWithEmptyTranslation();
 		_testGetFieldValuesWithoutTranslation();
 		_testGetFieldValuesWithTranslation();
 	}
@@ -265,6 +266,43 @@ public class ObjectEntryVersionFieldValueResolverTest {
 		);
 	}
 
+	private void _testGetFieldValuesWithEmptyTranslation() throws Exception {
+		long objectEntryId = RandomTestUtil.randomLong();
+		int version = RandomTestUtil.randomInt();
+
+		_setUpObjectEntryVersion(
+			objectEntryId,
+			JSONUtil.put(
+				"friendlyUrlPath", "hello-world"
+			).put(
+				"friendlyUrlPath_i18n", JSONUtil.put("en_US", "hello-world")
+			).put(
+				"properties",
+				JSONUtil.put(
+					"title", "Hallo"
+				).put(
+					"title_i18n",
+					JSONUtil.put(
+						"de_DE", "Hallo"
+					).put(
+						"en_US", "Hello"
+					).put(
+						"es_ES", ""
+					)
+				)
+			).toString(),
+			version);
+
+		Map<String, Object> fieldValues =
+			_objectEntryVersionFieldValueResolver.getFieldValues(
+				"en_US", "es_ES", objectEntryId, version);
+
+		Assert.assertEquals(fieldValues.toString(), 2, fieldValues.size());
+		Assert.assertEquals(
+			"hello-world", fieldValues.get("objectEntryFriendlyURL"));
+		Assert.assertEquals("Hello", fieldValues.get("title"));
+	}
+
 	private void _testGetFieldValuesWithoutTranslation() throws Exception {
 		long objectEntryId = RandomTestUtil.randomLong();
 		int version = RandomTestUtil.randomInt();
@@ -278,24 +316,26 @@ public class ObjectEntryVersionFieldValueResolverTest {
 			).put(
 				"properties",
 				JSONUtil.put(
-					"title", "Hello"
+					"title", "Hallo"
 				).put(
-					"title_i18n", JSONUtil.put("en_US", "Hello")
+					"title_i18n",
+					JSONUtil.put(
+						"de_DE", "Hallo"
+					).put(
+						"en_US", "Hello"
+					)
 				)
 			).toString(),
 			version);
 
 		Map<String, Object> fieldValues =
 			_objectEntryVersionFieldValueResolver.getFieldValues(
-				"es_ES", objectEntryId, version);
+				"en_US", "es_ES", objectEntryId, version);
 
 		Assert.assertEquals(fieldValues.toString(), 2, fieldValues.size());
-		Assert.assertTrue(
-			fieldValues.toString(), fieldValues.containsKey("title"));
-		Assert.assertNull(fieldValues.get("title"));
-
 		Assert.assertEquals(
 			"hello-world", fieldValues.get("objectEntryFriendlyURL"));
+		Assert.assertEquals("Hello", fieldValues.get("title"));
 	}
 
 	private void _testGetFieldValuesWithTranslation() throws Exception {
@@ -334,7 +374,7 @@ public class ObjectEntryVersionFieldValueResolverTest {
 
 		Map<String, Object> fieldValues =
 			_objectEntryVersionFieldValueResolver.getFieldValues(
-				"es_ES", objectEntryId, version);
+				"en_US", "es_ES", objectEntryId, version);
 
 		Assert.assertEquals(fieldValues.toString(), 3, fieldValues.size());
 		Assert.assertEquals("<p>Hello</p>", fieldValues.get("content"));
@@ -357,8 +397,8 @@ public class ObjectEntryVersionFieldValueResolverTest {
 
 		String expectedDisplayValue = StringBundler.concat(
 			"<img alt=\"", fileName,
-			"\" class=\"cms-compare-versions-attachment\" src=\"", previewURL,
-			"\" /> ", fileName);
+			"\" class=\"border cms-compare-versions-attachment d-block mb-2 ",
+			"mw-100 rounded\" src=\"", previewURL, "\" /> ", fileName);
 
 		Assert.assertEquals(
 			expectedDisplayValue,
@@ -453,8 +493,9 @@ public class ObjectEntryVersionFieldValueResolverTest {
 		Assert.assertEquals(
 			StringBundler.concat(
 				"<img alt=\"", escapedFileName,
-				"\" class=\"cms-compare-versions-attachment\" src=\"",
-				previewURL, "\" /> ", escapedFileName),
+				"\" class=\"border cms-compare-versions-attachment d-block ",
+				"mb-2 mw-100 rounded\" src=\"", previewURL, "\" /> ",
+				escapedFileName),
 			_objectEntryVersionFieldValueResolver.toDisplayValue(
 				_LANGUAGE_ID,
 				_mockObjectField(ObjectFieldConstants.BUSINESS_TYPE_ATTACHMENT),

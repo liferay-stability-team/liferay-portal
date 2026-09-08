@@ -31,6 +31,7 @@ import com.liferay.osb.faro.engine.client.model.AssetSummaryVocabulary;
 import com.liferay.osb.faro.engine.client.model.Author;
 import com.liferay.osb.faro.engine.client.model.BlockedKeyword;
 import com.liferay.osb.faro.engine.client.model.Campaign;
+import com.liferay.osb.faro.engine.client.model.CampaignMetric;
 import com.liferay.osb.faro.engine.client.model.CatalogField;
 import com.liferay.osb.faro.engine.client.model.Channel;
 import com.liferay.osb.faro.engine.client.model.ChannelDataSource;
@@ -659,12 +660,31 @@ public abstract class BaseMockContactsEngineClientImpl
 	}
 
 	@Override
+	public Results<Account> getCampaignAccounts(
+			FaroProject faroProject, long channelId, String filterString,
+			String id, String query, String sortString, int cur, int delta)
+		throws FaroEngineClientException {
+
+		return contactsEngineClient.getCampaignAccounts(
+			faroProject, channelId, filterString, id, query, sortString, cur,
+			delta);
+	}
+
+	@Override
+	public List<CampaignMetric> getCampaignMetrics(
+			FaroProject faroProject, long channelId)
+		throws FaroEngineClientException {
+
+		return contactsEngineClient.getCampaignMetrics(faroProject, channelId);
+	}
+
+	@Override
 	public Results<Campaign> getCampaigns(
 		FaroProject faroProject, long channelId, String filterString,
-		String keywords, String sortString, int cur, int delta) {
+		String query, String sortString, int cur, int delta) {
 
 		return contactsEngineClient.getCampaigns(
-			faroProject, channelId, filterString, keywords, sortString, cur,
+			faroProject, channelId, filterString, query, sortString, cur,
 			delta);
 	}
 
