@@ -37,7 +37,24 @@ export default function ViewVersionHistoryFDSPropsTransformer({
 }) {
 	return {
 		...otherProps,
-		bulkActions: transformFDSBulkActions(bulkActions),
+		bulkActions: transformFDSBulkActions(bulkActions).map((bulkAction) => {
+			if (bulkAction?.data?.id === 'compare') {
+				return {
+					...bulkAction,
+					isDisabled: ({
+						allItemsSelectedActive,
+						selectedItems,
+					}: {
+						allItemsSelectedActive?: boolean;
+						selectedItems?: Array<any>;
+					}) =>
+						Boolean(allItemsSelectedActive) ||
+						selectedItems?.length !== 2,
+				};
+			}
+
+			return bulkAction;
+		}),
 		customRenderers: {
 			tableCell: [
 				{
@@ -67,8 +84,7 @@ export default function ViewVersionHistoryFDSPropsTransformer({
 			if (action?.data?.id === 'compare') {
 				return {
 					...action,
-					isVisible: (item: any) =>
-						Boolean(!item?.file) &&
+					isVisible: () =>
 						additionalProps.objectEntryVersionsCount > 1,
 				};
 			}
@@ -264,7 +280,32 @@ export default function ViewVersionHistoryFDSPropsTransformer({
 			action: any;
 			selectedData: any;
 		}) => {
-			if (action?.data.id === 'delete') {
+			if (action?.data.id === 'compare') {
+				const [sourceVersion, targetVersion] = (
+					selectedData?.keyValues || []
+				).map(Number);
+
+				openCMSModal({
+					contentComponent: ({
+						closeModal,
+					}: {
+						closeModal: () => void;
+					}) =>
+						CompareVersionsModalContent({
+							apiURL: otherProps.apiURL as string,
+							availableLanguageIds:
+								additionalProps.availableLanguageIds,
+							closeModal,
+							defaultLanguageId:
+								additionalProps.defaultLanguageId,
+							initialTargetVersion: targetVersion,
+							initialVersion: sourceVersion,
+							objectEntryId: additionalProps.classPK,
+						}),
+					size: 'full-screen',
+				});
+			}
+			else if (action?.data.id === 'delete') {
 				deleteAssetVersionBulkAction({
 					apiURL: otherProps.apiURL,
 					className: additionalProps.className,

@@ -5,6 +5,7 @@
 
 package com.liferay.site.cms.site.initializer.internal.comparison;
 
+import com.liferay.diff.DiffHtml;
 import com.liferay.document.library.kernel.model.DLFileEntry;
 import com.liferay.document.library.kernel.service.DLAppLocalService;
 import com.liferay.document.library.kernel.service.DLFileEntryLocalService;
@@ -30,6 +31,9 @@ import com.liferay.portal.kernel.util.FastDateFormatFactoryUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.test.rule.LiferayUnitTestRule;
 import com.liferay.portal.util.FastDateFormatFactoryImpl;
+
+import java.io.BufferedReader;
+import java.io.Reader;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -75,8 +79,8 @@ public class ObjectEntryVersionFieldValueResolverTest {
 
 		_objectEntryVersionFieldValueResolver =
 			new ObjectEntryVersionFieldValueResolver(
-				_dlAppLocalService, _dlFileEntryLocalService, _dlURLHelper,
-				_language, _listTypeEntryLocalService,
+				_diffHtml, _dlAppLocalService, _dlFileEntryLocalService,
+				_dlURLHelper, _language, _listTypeEntryLocalService,
 				_objectEntryVersionService);
 	}
 
@@ -88,19 +92,10 @@ public class ObjectEntryVersionFieldValueResolverTest {
 	}
 
 	@Test
-	public void testIsDateBusinessType() {
-		Assert.assertTrue(
-			_objectEntryVersionFieldValueResolver.isDateBusinessType(
-				_mockObjectField(ObjectFieldConstants.BUSINESS_TYPE_DATE)));
-		Assert.assertTrue(
-			_objectEntryVersionFieldValueResolver.isDateBusinessType(
-				_mockObjectField(
-					ObjectFieldConstants.BUSINESS_TYPE_DATE_TIME)));
-		Assert.assertFalse(
-			_objectEntryVersionFieldValueResolver.isDateBusinessType(
-				_mockObjectField(ObjectFieldConstants.BUSINESS_TYPE_TEXT)));
-		Assert.assertFalse(
-			_objectEntryVersionFieldValueResolver.isDateBusinessType(null));
+	public void testToDiffHtml() throws Exception {
+		_testToDiffHtmlWithAttachmentObjectField();
+		_testToDiffHtmlWithDateObjectField();
+		_testToDiffHtmlWithTextObjectField();
 	}
 
 	@Test
@@ -169,6 +164,12 @@ public class ObjectEntryVersionFieldValueResolverTest {
 		);
 
 		return objectField;
+	}
+
+	private String _read(Reader reader) throws Exception {
+		BufferedReader bufferedReader = new BufferedReader(reader);
+
+		return bufferedReader.readLine();
 	}
 
 	private void _setUpAttachment(
@@ -381,6 +382,42 @@ public class ObjectEntryVersionFieldValueResolverTest {
 		Assert.assertEquals(
 			"hola-mundo", fieldValues.get("objectEntryFriendlyURL"));
 		Assert.assertEquals("Hola", fieldValues.get("title"));
+	}
+
+	private void _testToDiffHtmlWithAttachmentObjectField() throws Exception {
+		Assert.assertEquals(
+			"<span class=\"diff-html-removed\">old.png</span>" +
+				"<span class=\"diff-html-added\">new.png</span>",
+			_objectEntryVersionFieldValueResolver.toDiffHtml(
+				"new.png",
+				_mockObjectField(ObjectFieldConstants.BUSINESS_TYPE_ATTACHMENT),
+				"old.png"));
+	}
+
+	private void _testToDiffHtmlWithDateObjectField() throws Exception {
+		Assert.assertEquals(
+			"<span class=\"diff-html-added\">09/15/2026</span>",
+			_objectEntryVersionFieldValueResolver.toDiffHtml(
+				"09/15/2026",
+				_mockObjectField(ObjectFieldConstants.BUSINESS_TYPE_DATE),
+				StringPool.BLANK));
+	}
+
+	private void _testToDiffHtmlWithTextObjectField() throws Exception {
+		Mockito.when(
+			_diffHtml.diff(Mockito.any(Reader.class), Mockito.any(Reader.class))
+		).thenAnswer(
+			invocation -> StringBundler.concat(
+				_read(invocation.getArgument(0)), "|",
+				_read(invocation.getArgument(1)))
+		);
+
+		Assert.assertEquals(
+			"old|new",
+			_objectEntryVersionFieldValueResolver.toDiffHtml(
+				"new",
+				_mockObjectField(ObjectFieldConstants.BUSINESS_TYPE_TEXT),
+				"old"));
 	}
 
 	private void _testToDisplayValueWithAttachmentObjectField()
@@ -662,6 +699,7 @@ public class ObjectEntryVersionFieldValueResolverTest {
 
 	private static final String _LANGUAGE_ID = "en_US";
 
+	private final DiffHtml _diffHtml = Mockito.mock(DiffHtml.class);
 	private final DLAppLocalService _dlAppLocalService = Mockito.mock(
 		DLAppLocalService.class);
 	private final DLFileEntryLocalService _dlFileEntryLocalService =
