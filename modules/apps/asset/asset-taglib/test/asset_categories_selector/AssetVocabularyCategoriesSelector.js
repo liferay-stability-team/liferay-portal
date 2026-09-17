@@ -5,7 +5,7 @@
 
 import '@testing-library/jest-dom';
 import {useResource} from '@clayui/data-provider';
-import {render} from '@testing-library/react';
+import {act, render} from '@testing-library/react';
 import React from 'react';
 
 import AssetVocabularyCategoriesSelector from '../../src/main/resources/META-INF/resources/js/asset_categories_selector/AssetVocabularyCategoriesSelector';
@@ -44,6 +44,7 @@ jest.mock('@clayui/data-provider', () => {
 describe('AssetVocabularyCategoriesSelector', () => {
 	beforeEach(() => {
 		capturedProps = undefined;
+		jest.clearAllMocks();
 	});
 
 	it('refetch is not called in the first component render', () => {
@@ -79,5 +80,64 @@ describe('AssetVocabularyCategoriesSelector', () => {
 		render(<AssetVocabularyCategoriesSelector {...DEFAULT_PROPS} />);
 
 		expect(capturedProps['aria-labelledby']).toBeUndefined();
+	});
+
+	it('replaces the existing selection when singleSelect is true and a new valid category is added via autocomplete', () => {
+		useResource.mockReturnValue({
+			refetch: jest.fn(),
+			resource: [{categoryId: '2', titleCurrentValue: 'Clothing'}],
+		});
+
+		const onSelectedItemsChange = jest.fn();
+
+		render(
+			<AssetVocabularyCategoriesSelector
+				{...DEFAULT_PROPS}
+				onSelectedItemsChange={onSelectedItemsChange}
+				selectedItems={[{label: 'Electronics', value: '1'}]}
+				singleSelect={true}
+			/>
+		);
+
+		act(() => {
+			capturedProps.onItemsChange([
+				{label: 'Electronics', value: '1'},
+				{label: 'Clothing', value: '2'},
+			]);
+		});
+
+		expect(onSelectedItemsChange).toHaveBeenCalledWith([
+			{label: 'Clothing', value: '2'},
+		]);
+	});
+
+	it('keeps all selections when singleSelect is false and a new valid category is added via autocomplete', () => {
+		useResource.mockReturnValue({
+			refetch: jest.fn(),
+			resource: [{categoryId: '2', titleCurrentValue: 'Clothing'}],
+		});
+
+		const onSelectedItemsChange = jest.fn();
+
+		render(
+			<AssetVocabularyCategoriesSelector
+				{...DEFAULT_PROPS}
+				onSelectedItemsChange={onSelectedItemsChange}
+				selectedItems={[{label: 'Electronics', value: '1'}]}
+				singleSelect={false}
+			/>
+		);
+
+		act(() => {
+			capturedProps.onItemsChange([
+				{label: 'Electronics', value: '1'},
+				{label: 'Clothing', value: '2'},
+			]);
+		});
+
+		expect(onSelectedItemsChange).toHaveBeenCalledWith([
+			{label: 'Electronics', value: '1'},
+			{label: 'Clothing', value: '2'},
+		]);
 	});
 });
