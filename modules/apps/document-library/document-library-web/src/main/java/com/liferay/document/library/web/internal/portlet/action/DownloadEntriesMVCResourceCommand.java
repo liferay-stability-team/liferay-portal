@@ -6,13 +6,23 @@
 package com.liferay.document.library.web.internal.portlet.action;
 
 import com.liferay.document.library.constants.DLPortletKeys;
+import com.liferay.document.library.kernel.exception.FileSizeException;
+import com.liferay.document.library.kernel.model.DLFileEntryTable;
+import com.liferay.document.library.kernel.model.DLFolder;
 import com.liferay.document.library.kernel.model.DLFolderConstants;
 import com.liferay.document.library.kernel.service.DLAppService;
+import com.liferay.document.library.kernel.service.DLFolderLocalService;
+import com.liferay.document.library.kernel.util.DLValidator;
 import com.liferay.petra.io.StreamUtil;
+import com.liferay.petra.sql.dsl.DSLFunctionFactoryUtil;
+import com.liferay.petra.sql.dsl.DSLQueryFactoryUtil;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.exception.InvalidRepositoryException;
 import com.liferay.portal.kernel.exception.PortalException;
+import com.liferay.portal.kernel.language.Language;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.portlet.PortletResponseUtil;
 import com.liferay.portal.kernel.portlet.bridges.mvc.MVCResourceCommand;
 import com.liferay.portal.kernel.repository.model.FileEntry;
@@ -34,6 +44,8 @@ import com.liferay.portal.util.RepositoryUtil;
 import jakarta.portlet.PortletException;
 import jakarta.portlet.ResourceRequest;
 import jakarta.portlet.ResourceResponse;
+
+import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -85,6 +97,37 @@ public class DownloadEntriesMVCResourceCommand implements MVCResourceCommand {
 			}
 			else {
 				_downloadFileEntries(resourceRequest, resourceResponse);
+			}
+
+			return false;
+		}
+		catch (FileSizeException fileSizeException) {
+			if (_log.isDebugEnabled()) {
+				_log.debug(fileSizeException);
+			}
+
+			try {
+				ThemeDisplay themeDisplay =
+					(ThemeDisplay)resourceRequest.getAttribute(
+						WebKeys.THEME_DISPLAY);
+
+				resourceResponse.setProperty(
+					ResourceResponse.HTTP_STATUS_CODE,
+					String.valueOf(
+						HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE));
+
+				PortletResponseUtil.write(
+					resourceResponse,
+					_language.format(
+						themeDisplay.getLocale(),
+						"the-total-size-of-all-items-to-download-must-not-" +
+							"exceed-x",
+						_language.formatStorageSize(
+							fileSizeException.getMaxSize(),
+							themeDisplay.getLocale())));
+			}
+			catch (IOException ioException) {
+				throw new PortletException(ioException);
 			}
 
 			return false;
@@ -148,6 +191,31 @@ public class DownloadEntriesMVCResourceCommand implements MVCResourceCommand {
 				(ThemeDisplay)resourceRequest.getAttribute(
 					WebKeys.THEME_DISPLAY);
 
+			for (FileShortcut fileShortcut : fileShortcuts) {
+				fileEntries.add(
+					_dlAppService.getFileEntry(
+						fileShortcut.getToFileEntryId()));
+			}
+
+			long groupId = themeDisplay.getScopeGroupId();
+
+			if (_dlValidator.getMaxAllowableDownloadSize(groupId) > 0) {
+				long size = 0;
+
+				for (FileEntry fileEntry : fileEntries) {
+					size += fileEntry.getSize();
+				}
+
+				for (Folder folder : folders) {
+					if (!_isExternalRepositoryFolder(folder)) {
+						size += _getFolderSize(
+							folder.getRepositoryId(), folder.getFolderId());
+					}
+				}
+
+				_dlValidator.validateDownloadSize(groupId, size);
+			}
+
 			_setHeaders(
 				resourceResponse,
 				_getZipFileName(
@@ -165,13 +233,6 @@ public class DownloadEntriesMVCResourceCommand implements MVCResourceCommand {
 			for (FileEntry fileEntry : fileEntries) {
 				_zipFileEntry(
 					fileEntry, StringPool.BLANK, permissionChecker, fileNames,
-					zipOutputStream);
-			}
-
-			for (FileShortcut fileShortcut : fileShortcuts) {
-				_zipFileEntry(
-					_dlAppService.getFileEntry(fileShortcut.getToFileEntryId()),
-					StringPool.BLANK, permissionChecker, fileNames,
 					zipOutputStream);
 			}
 
@@ -199,18 +260,54 @@ public class DownloadEntriesMVCResourceCommand implements MVCResourceCommand {
 
 		_checkFolder(folderId);
 
+		long repositoryId = ParamUtil.getLong(resourceRequest, "repositoryId");
+
+		long groupId = themeDisplay.getScopeGroupId();
+
+		if (_dlValidator.getMaxAllowableDownloadSize(groupId) > 0) {
+			_dlValidator.validateDownloadSize(
+				groupId, _getFolderSize(repositoryId, folderId));
+		}
+
 		_setHeaders(resourceResponse, _getZipFileName(folderId, themeDisplay));
 
 		ZipOutputStream zipOutputStream = new ZipOutputStream(
 			resourceResponse.getPortletOutputStream());
-
-		long repositoryId = ParamUtil.getLong(resourceRequest, "repositoryId");
 
 		_zipFolder(
 			repositoryId, folderId, StringPool.BLANK,
 			themeDisplay.getPermissionChecker(), zipOutputStream);
 
 		zipOutputStream.close();
+	}
+
+	private long _getFolderSize(long repositoryId, long folderId) {
+		if (folderId == DLFolderConstants.DEFAULT_PARENT_FOLDER_ID) {
+			List<Long> sizes = _dlFolderLocalService.dslQuery(
+				DSLQueryFactoryUtil.select(
+					DSLFunctionFactoryUtil.sum(
+						DLFileEntryTable.INSTANCE.size
+					).as(
+						"SUM_VALUE"
+					)
+				).from(
+					DLFileEntryTable.INSTANCE
+				).where(
+					DLFileEntryTable.INSTANCE.repositoryId.eq(repositoryId)
+				));
+
+			return GetterUtil.getLong(sizes.get(0));
+		}
+
+		DLFolder dlFolder = _dlFolderLocalService.fetchDLFolder(folderId);
+
+		if (dlFolder == null) {
+			return 0;
+		}
+
+		return _dlFolderLocalService.getFolderSize(
+			dlFolder.getCompanyId(), dlFolder.getGroupId(),
+			dlFolder.getTreePath());
 	}
 
 	private String _getUniqueFileName(Set<String> fileNames, String fileName) {
@@ -338,7 +435,19 @@ public class DownloadEntriesMVCResourceCommand implements MVCResourceCommand {
 		}
 	}
 
+	private static final Log _log = LogFactoryUtil.getLog(
+		DownloadEntriesMVCResourceCommand.class);
+
 	@Reference
 	private DLAppService _dlAppService;
+
+	@Reference
+	private DLFolderLocalService _dlFolderLocalService;
+
+	@Reference
+	private DLValidator _dlValidator;
+
+	@Reference
+	private Language _language;
 
 }
