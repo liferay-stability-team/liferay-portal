@@ -68,6 +68,7 @@ import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.MimeTypesUtil;
 import com.liferay.portal.kernel.util.Time;
+import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.xml.Document;
 import com.liferay.portal.kernel.xml.Element;
 import com.liferay.portal.kernel.xml.SAXReaderUtil;
@@ -184,14 +185,44 @@ public class DDMFormValuesExportImportContentProcessorTest {
 
 		DDMFormValues ddmFormValues = new DDMFormValues(ddmForm);
 
+		String alt = RandomTestUtil.randomString();
+		String description = RandomTestUtil.randomString();
+		String unknownKeyValue = RandomTestUtil.randomString();
+
 		JSONObject jsonObject1 = JSONUtil.put(
+			"alt", alt
+		).put(
+			"classNameId",
+			ClassNameLocalServiceUtil.getClassNameId(FileEntry.class)
+		).put(
 			"classPK", _fileEntry.getFileEntryId()
 		).put(
+			"description", description
+		).put(
+			"extension", _fileEntry.getExtension()
+		).put(
+			"externalReferenceCode", _fileEntry.getExternalReferenceCode()
+		).put(
+			"fileEntryId", _fileEntry.getFileEntryId()
+		).put(
+			"groupExternalReferenceCode",
+			_stagingGroup.getExternalReferenceCode()
+		).put(
 			"groupId", _fileEntry.getGroupId()
+		).put(
+			"name", _fileEntry.getFileName()
+		).put(
+			"resourcePrimKey", _fileEntry.getPrimaryKey()
+		).put(
+			"size", _fileEntry.getSize()
 		).put(
 			"title", _fileEntry.getTitle()
 		).put(
 			"type", "document"
+		).put(
+			"unknownKey", unknownKeyValue
+		).put(
+			"url", RandomTestUtil.randomString()
 		).put(
 			"uuid", _fileEntry.getUuid()
 		);
@@ -251,7 +282,42 @@ public class DDMFormValuesExportImportContentProcessorTest {
 
 		_dlFileEntryLocalService.deleteFileEntry(newDLFileEntry);
 
+		Assert.assertEquals(jsonObject1.keySet(), jsonObject2.keySet());
+
+		Assert.assertEquals(alt, jsonObject2.getString("alt"));
+		Assert.assertEquals(
+			ClassNameLocalServiceUtil.getClassNameId(FileEntry.class),
+			jsonObject2.getLong("classNameId"));
 		Assert.assertEquals(newDLFileEntryId, jsonObject2.getLong("classPK"));
+		Assert.assertEquals(description, jsonObject2.getString("description"));
+		Assert.assertEquals(
+			newDLFileEntry.getExtension(), jsonObject2.getString("extension"));
+		Assert.assertEquals(
+			newDLFileEntry.getExternalReferenceCode(),
+			jsonObject2.getString("externalReferenceCode"));
+		Assert.assertEquals(
+			newDLFileEntryId, jsonObject2.getLong("fileEntryId"));
+		Assert.assertEquals(
+			_liveGroup.getExternalReferenceCode(),
+			jsonObject2.getString("groupExternalReferenceCode"));
+		Assert.assertEquals(
+			_liveGroup.getGroupId(), jsonObject2.getLong("groupId"));
+		Assert.assertEquals(
+			newDLFileEntry.getFileName(), jsonObject2.getString("name"));
+		Assert.assertEquals(
+			newDLFileEntryId, jsonObject2.getLong("resourcePrimKey"));
+		Assert.assertEquals(
+			newDLFileEntry.getSize(), jsonObject2.getLong("size"));
+		Assert.assertEquals(
+			newDLFileEntry.getTitle(), jsonObject2.getString("title"));
+		Assert.assertEquals("document", jsonObject2.getString("type"));
+		Assert.assertEquals(
+			unknownKeyValue, jsonObject2.getString("unknownKey"));
+		Assert.assertNotEquals(
+			jsonObject1.getString("url"), jsonObject2.getString("url"));
+		Assert.assertTrue(Validator.isNotNull(jsonObject2.getString("url")));
+		Assert.assertEquals(
+			newDLFileEntry.getUuid(), jsonObject2.getString("uuid"));
 	}
 
 	@Test
