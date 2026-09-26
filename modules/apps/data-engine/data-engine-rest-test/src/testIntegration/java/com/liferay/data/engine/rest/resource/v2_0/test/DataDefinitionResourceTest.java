@@ -884,6 +884,8 @@ public class DataDefinitionResourceTest
 
 		assertEquals(randomDataDefinition, getDataDefinition);
 		assertValid(getDataDefinition);
+
+		_testPutDataDefinitionWithFieldsetDefaultValues();
 	}
 
 	@Override
@@ -1154,6 +1156,21 @@ public class DataDefinitionResourceTest
 		return allDataDefinitionFields;
 	}
 
+	private DataDefinitionField _getDataDefinitionField(
+		DataDefinition dataDefinition, String name) {
+
+		for (DataDefinitionField dataDefinitionField :
+				_getAllDataDefinitionFields(
+					dataDefinition.getDataDefinitionFields())) {
+
+			if (Objects.equals(dataDefinitionField.getName(), name)) {
+				return dataDefinitionField;
+			}
+		}
+
+		throw new AssertionError("No data definition field named " + name);
+	}
+
 	private List<String> _getDataLayoutColumnFieldNames(DataLayout dataLayout) {
 		List<String> dataLayoutColumnFieldNames = new ArrayList<>();
 
@@ -1319,6 +1336,47 @@ public class DataDefinitionResourceTest
 		Assert.assertTrue(
 			names.toString(),
 			names.contains(fieldsetDataDefinitionField.getName() + "_1"));
+	}
+
+	private void _testPutDataDefinitionWithFieldsetDefaultValues()
+		throws Exception {
+
+		DataDefinition fieldsetDataDefinition =
+			dataDefinitionResource.postSiteDataDefinitionByContentType(
+				testGroup.getGroupId(), _CONTENT_TYPE,
+				DataDefinition.toDTO(
+					DataDefinitionTestUtil.read(
+						"data-definition-fieldset-structure.json")));
+
+		DataDefinition dataDefinition = _addDataDefinitionWithFieldsets(
+			"data-definition-with-fieldset.json", fieldsetDataDefinition);
+
+		String name =
+			fieldsetDataDefinition.getDataDefinitionFields()[0].getName();
+
+		String defaultValue = RandomTestUtil.randomString();
+
+		DataDefinitionField dataDefinitionField = _getDataDefinitionField(
+			dataDefinition, name);
+
+		dataDefinitionField.setDefaultValue(
+			HashMapBuilder.<String, Object>put(
+				"en_US", defaultValue
+			).build());
+
+		dataDefinitionResource.putDataDefinition(
+			dataDefinition.getId(), dataDefinition);
+
+		DataDefinition getDataDefinition =
+			dataDefinitionResource.getDataDefinition(dataDefinition.getId());
+
+		DataDefinitionField getDataDefinitionField = _getDataDefinitionField(
+			getDataDefinition, name);
+
+		Assert.assertEquals(
+			defaultValue,
+			MapUtil.getString(
+				getDataDefinitionField.getDefaultValue(), "en_US"));
 	}
 
 	private static final String _CONTENT_TYPE = "test";
