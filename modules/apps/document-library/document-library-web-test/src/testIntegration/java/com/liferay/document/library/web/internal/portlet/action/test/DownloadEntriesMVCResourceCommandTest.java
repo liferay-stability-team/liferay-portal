@@ -12,12 +12,16 @@ import com.liferay.petra.string.StringPool;
 import com.liferay.portal.configuration.test.util.ConfigurationTemporarySwapper;
 import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.model.Group;
+import com.liferay.portal.kernel.model.User;
+import com.liferay.portal.kernel.model.role.RoleConstants;
 import com.liferay.portal.kernel.portlet.bridges.mvc.MVCResourceCommand;
 import com.liferay.portal.kernel.portletfilerepository.PortletFileRepository;
 import com.liferay.portal.kernel.repository.model.FileEntry;
 import com.liferay.portal.kernel.repository.model.Folder;
 import com.liferay.portal.kernel.security.permission.PermissionThreadLocal;
 import com.liferay.portal.kernel.service.CompanyLocalService;
+import com.liferay.portal.kernel.service.ServiceContext;
+import com.liferay.portal.kernel.test.context.ContextUserReplace;
 import com.liferay.portal.kernel.test.portlet.MockLiferayResourceRequest;
 import com.liferay.portal.kernel.test.portlet.MockLiferayResourceResponse;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
@@ -26,6 +30,7 @@ import com.liferay.portal.kernel.test.util.GroupTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
+import com.liferay.portal.kernel.test.util.UserTestUtil;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.HashMapDictionaryBuilder;
@@ -73,6 +78,8 @@ public class DownloadEntriesMVCResourceCommandTest {
 		_testServeResourceDownloadEntries();
 
 		_testServeResourceDownloadFolder();
+
+		_testServeResourceDownloadFolderWithoutShortcutTargetPermission();
 
 		_testServeResourceMaxSizeToDownload();
 	}
@@ -226,6 +233,47 @@ public class DownloadEntriesMVCResourceCommandTest {
 			zipEntries.toString(), zipEntries.containsKey("report (1).txt"));
 	}
 
+	private void _testServeResourceDownloadFolderWithoutShortcutTargetPermission()
+		throws Exception {
+
+		Folder folder = _addFolder(
+			"Shared", DLFolderConstants.DEFAULT_PARENT_FOLDER_ID);
+
+		_addFileEntry("visible", "visible.txt", folder.getFolderId());
+
+		ServiceContext serviceContext =
+			ServiceContextTestUtil.getServiceContext(_group.getGroupId());
+
+		serviceContext.setAddGroupPermissions(false);
+		serviceContext.setAddGuestPermissions(false);
+
+		FileEntry fileEntry = _dlAppLocalService.addFileEntry(
+			null, TestPropsValues.getUserId(), _group.getGroupId(),
+			DLFolderConstants.DEFAULT_PARENT_FOLDER_ID, "private.txt",
+			ContentTypes.TEXT_PLAIN, "private".getBytes(), null, null, null,
+			serviceContext);
+
+		_dlAppLocalService.addFileShortcut(
+			null, TestPropsValues.getUserId(), _group.getGroupId(),
+			folder.getFolderId(), fileEntry.getFileEntryId(),
+			ServiceContextTestUtil.getServiceContext(_group.getGroupId()));
+
+		_user = UserTestUtil.addGroupUser(_group, RoleConstants.SITE_MEMBER);
+
+		try (ContextUserReplace contextUserReplace = new ContextUserReplace(
+				_user)) {
+
+			Map<String, String> zipEntries = _getZipEntries(
+				_serveResource(
+					_getMockLiferayResourceRequest(
+						folder.getFolderId(),
+						"/document_library/download_folder")));
+
+			Assert.assertEquals(zipEntries.toString(), 1, zipEntries.size());
+			Assert.assertEquals("visible", zipEntries.get("visible.txt"));
+		}
+	}
+
 	private void _testServeResourceMaxSizeToDownload() throws Exception {
 		_portletFileRepository.addPortletFileEntry(
 			_group.getGroupId(), TestPropsValues.getUserId(),
@@ -287,5 +335,8 @@ public class DownloadEntriesMVCResourceCommandTest {
 
 	@Inject
 	private PortletFileRepository _portletFileRepository;
+
+	@DeleteAfterTestRun
+	private User _user;
 
 }
