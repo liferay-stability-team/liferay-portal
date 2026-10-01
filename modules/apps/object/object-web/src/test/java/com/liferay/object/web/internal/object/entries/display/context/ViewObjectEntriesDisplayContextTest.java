@@ -6,8 +6,12 @@
 package com.liferay.object.web.internal.object.entries.display.context;
 
 import com.liferay.frontend.data.set.model.FDSActionDropdownItem;
+import com.liferay.frontend.data.set.model.FDSSortItem;
+import com.liferay.frontend.data.set.model.FDSSortItemList;
 import com.liferay.object.constants.ObjectWebKeys;
 import com.liferay.object.model.ObjectDefinition;
+import com.liferay.object.model.ObjectView;
+import com.liferay.object.model.ObjectViewSortColumn;
 import com.liferay.object.scope.ObjectScopeProvider;
 import com.liferay.object.service.ObjectActionLocalService;
 import com.liferay.object.service.ObjectFieldLocalService;
@@ -36,6 +40,7 @@ import jakarta.portlet.PortletRequest;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -93,7 +98,7 @@ public class ViewObjectEntriesDisplayContextTest {
 					Mockito.mock(ObjectFieldFDSFilterFactoryRegistry.class),
 					Mockito.mock(ObjectFieldLocalService.class),
 					Mockito.mock(ObjectScopeProvider.class),
-					Mockito.mock(ObjectViewLocalService.class),
+					_objectViewLocalService,
 					Mockito.mock(PortletResourcePermission.class),
 					restContextPath));
 
@@ -143,6 +148,52 @@ public class ViewObjectEntriesDisplayContextTest {
 			"bell-off", "unsubscribe", "unsubscribe", "post", "item");
 	}
 
+	@Test
+	public void testGetFDSSortItemList() {
+		ObjectView objectView = Mockito.mock(ObjectView.class);
+
+		List<ObjectViewSortColumn> objectViewSortColumns = Arrays.asList(
+			_mockObjectViewSortColumn("textField", "asc"),
+			_mockObjectViewSortColumn("createDate", "desc"),
+			_mockObjectViewSortColumn("modifiedDate", "desc"));
+
+		Mockito.when(
+			objectView.getObjectViewSortColumns()
+		).thenReturn(
+			objectViewSortColumns
+		);
+
+		Mockito.when(
+			_objectViewLocalService.fetchDefaultObjectView(Mockito.anyLong())
+		).thenReturn(
+			objectView
+		);
+
+		ViewObjectEntriesDisplayContext viewObjectEntriesDisplayContext =
+			_createViewObjectEntriesDisplayContext();
+
+		FDSSortItemList fdsSortItemList =
+			viewObjectEntriesDisplayContext.getFDSSortItemList();
+
+		Assert.assertEquals(
+			fdsSortItemList.toString(), 3, fdsSortItemList.size());
+
+		_assertFDSSortItem(fdsSortItemList.get(0), "asc", "textField");
+		_assertFDSSortItem(fdsSortItemList.get(1), "desc", "dateCreated");
+		_assertFDSSortItem(fdsSortItemList.get(2), "desc", "dateModified");
+	}
+
+	@Test
+	public void testGetFDSSortItemListWhenDefaultObjectViewIsNull() {
+		ViewObjectEntriesDisplayContext viewObjectEntriesDisplayContext =
+			_createViewObjectEntriesDisplayContext();
+
+		FDSSortItemList fdsSortItemList =
+			viewObjectEntriesDisplayContext.getFDSSortItemList();
+
+		Assert.assertTrue(fdsSortItemList.isEmpty());
+	}
+
 	private static void _setUpPortletURLUtil() throws Exception {
 		_portletURLUtilMockedStatic = Mockito.mockStatic(PortletURLUtil.class);
 
@@ -174,6 +225,57 @@ public class ViewObjectEntriesDisplayContextTest {
 		Assert.assertEquals(icon, fdsActionDropdownItem.get("icon"));
 		Assert.assertEquals(label, fdsActionDropdownItem.get("label"));
 		Assert.assertEquals(type, fdsActionDropdownItem.get("type"));
+	}
+
+	private void _assertFDSSortItem(
+		FDSSortItem fdsSortItem, String direction, String key) {
+
+		Assert.assertEquals(Boolean.TRUE, fdsSortItem.get("active"));
+		Assert.assertEquals(direction, fdsSortItem.get("direction"));
+		Assert.assertEquals(key, fdsSortItem.get("key"));
+	}
+
+	private ViewObjectEntriesDisplayContext
+		_createViewObjectEntriesDisplayContext() {
+
+		ViewObjectEntriesDisplayContext viewObjectEntriesDisplayContext =
+			new ViewObjectEntriesDisplayContext(
+				_mockHttpServletRequest, _objectActionLocalService,
+				Mockito.mock(ObjectFieldFDSFilterFactoryRegistry.class),
+				Mockito.mock(ObjectFieldLocalService.class),
+				Mockito.mock(ObjectScopeProvider.class),
+				_objectViewLocalService,
+				Mockito.mock(PortletResourcePermission.class),
+				"/c/" + RandomTestUtil.randomString());
+
+		ReflectionTestUtil.setFieldValue(
+			viewObjectEntriesDisplayContext, "_objectRequestHelper",
+			_objectRequestHelper);
+
+		viewObjectEntriesDisplayContext.getObjectDefinition();
+
+		return viewObjectEntriesDisplayContext;
+	}
+
+	private ObjectViewSortColumn _mockObjectViewSortColumn(
+		String objectFieldName, String sortOrder) {
+
+		ObjectViewSortColumn objectViewSortColumn = Mockito.mock(
+			ObjectViewSortColumn.class);
+
+		Mockito.when(
+			objectViewSortColumn.getObjectFieldName()
+		).thenReturn(
+			objectFieldName
+		);
+
+		Mockito.when(
+			objectViewSortColumn.getSortOrder()
+		).thenReturn(
+			sortOrder
+		);
+
+		return objectViewSortColumn;
 	}
 
 	private void _setUpLanguageUtil() {
@@ -262,5 +364,7 @@ public class ViewObjectEntriesDisplayContextTest {
 		ObjectDefinition.class);
 	private final ObjectRequestHelper _objectRequestHelper = Mockito.mock(
 		ObjectRequestHelper.class);
+	private final ObjectViewLocalService _objectViewLocalService = Mockito.mock(
+		ObjectViewLocalService.class);
 
 }
