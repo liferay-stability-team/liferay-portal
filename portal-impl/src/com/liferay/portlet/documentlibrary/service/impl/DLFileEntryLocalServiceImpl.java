@@ -2196,7 +2196,9 @@ public class DLFileEntryLocalServiceImpl
 
 			// Indexer
 
-			if (Objects.equals(
+			if ((status != WorkflowConstants.STATUS_EXPIRED) &&
+				(status != WorkflowConstants.STATUS_IN_TRASH) &&
+				Objects.equals(
 					dlFileVersion.getVersion(),
 					DLFileEntryConstants.VERSION_DEFAULT)) {
 
