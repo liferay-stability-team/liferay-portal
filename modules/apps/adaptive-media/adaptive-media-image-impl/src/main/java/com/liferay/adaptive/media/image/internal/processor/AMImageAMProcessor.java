@@ -170,8 +170,8 @@ public final class AMImageAMProcessor implements AMProcessor<FileVersion> {
 
 		if (_log.isDebugEnabled()) {
 			_log.debug(
-				"Skipped file version " + fileVersion.getFileVersionId() +
-					" because it was deleted");
+				"File version " + fileVersion.getFileVersionId() +
+					" was deleted");
 		}
 
 		return false;
