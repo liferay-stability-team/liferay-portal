@@ -13,6 +13,7 @@ import com.liferay.dynamic.data.mapping.service.DDMStructureLocalService;
 import com.liferay.dynamic.data.mapping.service.DDMStructureService;
 import com.liferay.dynamic.data.mapping.service.persistence.DDMStructureUtil;
 import com.liferay.dynamic.data.mapping.storage.StorageType;
+import com.liferay.dynamic.data.mapping.util.comparator.StructureNameComparator;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
@@ -44,6 +45,7 @@ import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.TransactionalTestRule;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.junit.After;
@@ -487,6 +489,17 @@ public class DDMStructureServiceTest extends BaseDDMServiceTestCase {
 	}
 
 	@Test
+	public void testSearchOrderByName() throws Exception {
+		List<DDMStructure> ddmStructures = Arrays.asList(
+			_addFragmentStructure(RandomTestUtil.randomString()),
+			_addFragmentStructure(RandomTestUtil.randomString()),
+			_addFragmentStructure(RandomTestUtil.randomString()));
+
+		_testSearchOrderByName(true, ddmStructures);
+		_testSearchOrderByName(false, ddmStructures);
+	}
+
+	@Test
 	public void testSearchWithSiteAdminPermission() throws Exception {
 		_ddmStructures.add(
 			addStructure(_classNameId, StringUtil.randomString()));
@@ -548,6 +561,17 @@ public class DDMStructureServiceTest extends BaseDDMServiceTestCase {
 		PrincipalThreadLocal.setName(_siteAdminUser.getUserId());
 	}
 
+	private DDMStructure _addFragmentStructure(String name) throws Exception {
+		DDMStructure ddmStructure = addStructure(
+			0, _classNameId, null, name, read("test-structure.xsd"),
+			StorageType.DEFAULT.getValue(),
+			DDMStructureConstants.TYPE_FRAGMENT);
+
+		_ddmStructures.add(ddmStructure);
+
+		return ddmStructure;
+	}
+
 	private DDMStructure _addStructure(String externalReferenceCode)
 		throws Exception {
 
@@ -563,6 +587,25 @@ public class DDMStructureServiceTest extends BaseDDMServiceTestCase {
 			structure.getStructureKey(), structure.getNameMap(),
 			structure.getDescriptionMap(), structure.getDefinition(),
 			ServiceContextTestUtil.getServiceContext(structure.getGroupId()));
+	}
+
+	private void _testSearchOrderByName(
+			boolean ascending, List<DDMStructure> ddmStructures)
+		throws Exception {
+
+		StructureNameComparator structureNameComparator =
+			new StructureNameComparator(ascending);
+
+		ddmStructures.sort(structureNameComparator);
+
+		Assert.assertEquals(
+			ddmStructures,
+			_ddmStructureService.search(
+				TestPropsValues.getCompanyId(), new long[] {group.getGroupId()},
+				_classNameId, StringPool.BLANK,
+				DDMStructureConstants.TYPE_FRAGMENT,
+				WorkflowConstants.STATUS_ANY, QueryUtil.ALL_POS,
+				QueryUtil.ALL_POS, structureNameComparator));
 	}
 
 	private long _classNameId;
