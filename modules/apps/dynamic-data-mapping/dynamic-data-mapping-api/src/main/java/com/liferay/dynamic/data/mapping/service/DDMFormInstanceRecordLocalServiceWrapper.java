@@ -137,6 +137,16 @@ public class DDMFormInstanceRecordLocalServiceWrapper
 
 	@Override
 	public DDMFormInstanceRecord deleteFormInstanceRecord(
+			DDMFormInstanceRecord ddmFormInstanceRecord,
+			boolean updateFormInstanceReport)
+		throws com.liferay.portal.kernel.exception.PortalException {
+
+		return _ddmFormInstanceRecordLocalService.deleteFormInstanceRecord(
+			ddmFormInstanceRecord, updateFormInstanceReport);
+	}
+
+	@Override
+	public DDMFormInstanceRecord deleteFormInstanceRecord(
 			long ddmFormInstanceRecordId)
 		throws com.liferay.portal.kernel.exception.PortalException {
 
@@ -651,4 +661,4 @@ public class DDMFormInstanceRecordLocalServiceWrapper
 		_ddmFormInstanceRecordLocalService;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:1942133548
+// LIFERAY-SERVICE-BUILDER-HASH:135741403

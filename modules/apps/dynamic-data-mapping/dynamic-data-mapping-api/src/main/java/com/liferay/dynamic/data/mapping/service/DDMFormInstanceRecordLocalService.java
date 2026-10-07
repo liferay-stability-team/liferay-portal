@@ -137,12 +137,18 @@ public interface DDMFormInstanceRecordLocalService
 		throws PortalException;
 
 	@Indexable(type = IndexableType.DELETE)
+	public DDMFormInstanceRecord deleteFormInstanceRecord(
+			DDMFormInstanceRecord ddmFormInstanceRecord)
+		throws PortalException;
+
+	@Indexable(type = IndexableType.DELETE)
 	@SystemEvent(
 		action = SystemEventConstants.ACTION_SKIP,
 		type = SystemEventConstants.TYPE_DELETE
 	)
 	public DDMFormInstanceRecord deleteFormInstanceRecord(
-			DDMFormInstanceRecord ddmFormInstanceRecord)
+			DDMFormInstanceRecord ddmFormInstanceRecord,
+			boolean updateFormInstanceReport)
 		throws PortalException;
 
 	@Indexable(type = IndexableType.DELETE)
@@ -456,4 +462,4 @@ public interface DDMFormInstanceRecordLocalService
 		throws E;
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-1656096514
+// LIFERAY-SERVICE-BUILDER-HASH:2017420545
