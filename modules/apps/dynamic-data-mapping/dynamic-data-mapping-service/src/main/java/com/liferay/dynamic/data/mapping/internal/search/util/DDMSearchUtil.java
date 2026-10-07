@@ -51,7 +51,9 @@ public class DDMSearchUtil {
 		searchContext.setGroupIds(groupIds);
 
 		if (orderByComparator != null) {
-			searchContext.setSorts(_getSortsFromComparator(orderByComparator));
+			searchContext.setSorts(
+				_getSortsFromComparator(
+					searchContext.getLanguageId(), orderByComparator));
 		}
 
 		searchContext.setStart(start);
@@ -88,7 +90,9 @@ public class DDMSearchUtil {
 		}
 
 		if (orderByComparator != null) {
-			searchContext.setSorts(_getSortsFromComparator(orderByComparator));
+			searchContext.setSorts(
+				_getSortsFromComparator(
+					searchContext.getLanguageId(), orderByComparator));
 		}
 
 		return searchContext;
@@ -175,7 +179,9 @@ public class DDMSearchUtil {
 		}
 
 		if (orderByComparator != null) {
-			searchContext.setSorts(_getSortsFromComparator(orderByComparator));
+			searchContext.setSorts(
+				_getSortsFromComparator(
+					searchContext.getLanguageId(), orderByComparator));
 		}
 
 		return searchContext;
@@ -236,6 +242,7 @@ public class DDMSearchUtil {
 	}
 
 	private static Sort[] _getSortsFromComparator(
+		String languageId,
 		OrderByComparator<? extends BaseModel<?>> orderByComparator) {
 
 		return TransformUtil.transform(
@@ -243,6 +250,11 @@ public class DDMSearchUtil {
 			orderByFieldName -> {
 				String fieldName = _fieldNameOrderByCols.getOrDefault(
 					orderByFieldName, orderByFieldName);
+
+				if (fieldName.equals(Field.NAME)) {
+					fieldName = Field.getSortableFieldName(
+						Field.getLocalizedName(languageId, "localized_name"));
+				}
 
 				int sortType = _fieldNameSortTypes.getOrDefault(
 					fieldName, Sort.STRING_TYPE);
