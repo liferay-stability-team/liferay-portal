@@ -30,9 +30,6 @@ import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
-import com.liferay.portal.kernel.transaction.Propagation;
-import com.liferay.portal.kernel.transaction.TransactionConfig;
-import com.liferay.portal.kernel.transaction.TransactionInvokerUtil;
 import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.FileUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
@@ -86,7 +83,7 @@ public class DLFileVersionModelListenerTest {
 	}
 
 	@Test
-	public void testOnAfterRemove() throws Throwable {
+	public void testOnAfterRemove() throws Exception {
 		_testOnAfterRemoveWhenCancelCheckOut();
 		_testOnAfterRemoveWhenCancelCheckOutInCTCollection();
 		_testOnAfterRemoveWhenCheckInFileEntryWithoutVersionNumberIncrease();
@@ -158,7 +155,7 @@ public class DLFileVersionModelListenerTest {
 	}
 
 	private void _testOnAfterRemoveWhenCancelCheckOutInCTCollection()
-		throws Throwable {
+		throws Exception {
 
 		_ctCollection = _ctCollectionLocalService.addCTCollection(
 			null, TestPropsValues.getCompanyId(), TestPropsValues.getUserId(),
@@ -173,24 +170,11 @@ public class DLFileVersionModelListenerTest {
 			fileVersion = _addPrivateWorkingCopyFileVersion();
 		}
 
-		TransactionInvokerUtil.invoke(
-			TransactionConfig.Factory.create(
-				Propagation.REQUIRED, new Class<?>[] {Exception.class}),
-			() -> {
-				try (SafeCloseable safeCloseable =
-						CTCollectionThreadLocal.
-							setCTCollectionIdWithSafeCloseable(
-								_ctCollection.getCtCollectionId())) {
-
-					_dlAppService.cancelCheckOut(fileVersion.getFileEntryId());
-				}
-
-				return null;
-			});
-
 		try (SafeCloseable safeCloseable =
 				CTCollectionThreadLocal.setCTCollectionIdWithSafeCloseable(
 					_ctCollection.getCtCollectionId())) {
+
+			_dlAppService.cancelCheckOut(fileVersion.getFileEntryId());
 
 			_assertRemoved(fileVersion);
 		}
