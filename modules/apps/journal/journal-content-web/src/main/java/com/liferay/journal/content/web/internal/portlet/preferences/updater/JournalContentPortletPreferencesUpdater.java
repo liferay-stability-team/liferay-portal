@@ -60,14 +60,18 @@ public class JournalContentPortletPreferencesUpdater
 		portletPreferences.setValue(
 			"articleExternalReferenceCode", article.getExternalReferenceCode());
 
-		if (article.getGroupId() != themeDisplay.getScopeGroupId()) {
-			Group group = _groupLocalService.fetchGroup(article.getGroupId());
+		Group group = null;
 
-			if (group != null) {
-				portletPreferences.setValue(
-					"groupExternalReferenceCode",
-					group.getExternalReferenceCode());
-			}
+		if (article.getGroupId() != themeDisplay.getScopeGroupId()) {
+			group = _groupLocalService.fetchGroup(article.getGroupId());
+		}
+
+		if (group != null) {
+			portletPreferences.setValue(
+				"groupExternalReferenceCode", group.getExternalReferenceCode());
+		}
+		else {
+			portletPreferences.reset("groupExternalReferenceCode");
 		}
 
 		_addLayoutClassedModelUsage(

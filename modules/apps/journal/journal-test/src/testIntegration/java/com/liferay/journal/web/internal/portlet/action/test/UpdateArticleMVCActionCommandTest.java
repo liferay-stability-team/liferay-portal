@@ -15,6 +15,7 @@ import com.liferay.journal.service.JournalArticleLocalService;
 import com.liferay.layout.test.util.LayoutTestUtil;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.model.Company;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.portlet.LiferayPortletRequest;
@@ -29,9 +30,9 @@ import com.liferay.portal.kernel.test.portlet.MockLiferayPortletActionResponse;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
-import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
+import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.JavaConstants;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.Portal;
@@ -103,9 +104,22 @@ public class UpdateArticleMVCActionCommandTest {
 
 		Layout layout = LayoutTestUtil.addTypePortletLayout(_group);
 
-		String portletResource =
-			JournalContentPortletKeys.JOURNAL_CONTENT + "_INSTANCE_" +
-				RandomTestUtil.randomString();
+		String portletResource = LayoutTestUtil.addPortletToLayout(
+			TestPropsValues.getUserId(), layout,
+			JournalContentPortletKeys.JOURNAL_CONTENT, "column-1",
+			HashMapBuilder.put(
+				"groupExternalReferenceCode",
+				() -> {
+					Company company = _companyLocalService.getCompany(
+						_group.getCompanyId());
+
+					Group companyGroup = company.getGroup();
+
+					return new String[] {
+						companyGroup.getExternalReferenceCode()
+					};
+				}
+			).build());
 
 		mockLiferayPortletActionRequest.setParameter(
 			"portletResource", portletResource);

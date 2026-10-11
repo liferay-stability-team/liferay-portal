@@ -8,13 +8,20 @@ package com.liferay.journal.content.web.internal.portlet.action.test;
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.asset.kernel.model.AssetEntry;
 import com.liferay.asset.kernel.service.AssetEntryLocalServiceUtil;
+import com.liferay.depot.constants.DepotConstants;
+import com.liferay.depot.model.DepotEntry;
+import com.liferay.depot.service.DepotEntryGroupRelLocalService;
+import com.liferay.depot.service.DepotEntryLocalService;
+import com.liferay.dynamic.data.mapping.model.DDMStructure;
+import com.liferay.dynamic.data.mapping.test.util.DDMStructureTestUtil;
 import com.liferay.journal.constants.JournalContentPortletKeys;
 import com.liferay.journal.constants.JournalFolderConstants;
 import com.liferay.journal.model.JournalArticle;
 import com.liferay.journal.test.util.JournalTestUtil;
+import com.liferay.layout.test.util.LayoutTestUtil;
+import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.model.Company;
 import com.liferay.portal.kernel.model.Group;
-import com.liferay.portal.kernel.model.Portlet;
 import com.liferay.portal.kernel.portlet.ConfigurationAction;
 import com.liferay.portal.kernel.portlet.PortletConfigFactoryUtil;
 import com.liferay.portal.kernel.service.CompanyLocalService;
@@ -25,16 +32,16 @@ import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
+import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
+import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.WebKeys;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
-
-import jakarta.portlet.PortletConfig;
 
 import java.util.Map;
 
@@ -67,64 +74,29 @@ public class JournalContentConfigurationActionTest {
 
 	@Test
 	public void testProcessAction() throws Exception {
-		Portlet portlet = PortletLocalServiceUtil.getPortletById(
-			JournalContentPortletKeys.JOURNAL_CONTENT + "_INSTANCE_" +
-				RandomTestUtil.randomString());
-
-		PortletConfig portletConfig = PortletConfigFactoryUtil.create(
-			portlet, null);
-
 		MockLiferayPortletActionRequest mockLiferayPortletActionRequest =
-			new MockLiferayPortletActionRequest();
-
-		mockLiferayPortletActionRequest.setAttribute(
-			WebKeys.THEME_DISPLAY, _getThemeDisplay());
+			_getMockLiferayPortletActionRequest(_getThemeDisplay());
 
 		JournalArticle journalArticle1 = JournalTestUtil.addArticle(
 			_group.getGroupId(),
 			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID);
 
-		AssetEntry assetEntry = AssetEntryLocalServiceUtil.fetchEntry(
-			_portal.getClassNameId(JournalArticle.class.getName()),
-			journalArticle1.getResourcePrimKey());
-
-		mockLiferayPortletActionRequest.setParameter(
-			"preferences--assetEntryId--",
-			String.valueOf(assetEntry.getEntryId()));
-
-		_configurationAction.processAction(
-			portletConfig, mockLiferayPortletActionRequest,
-			new MockLiferayPortletActionResponse());
-
-		Map<String, String[]> portletPreferencesMap =
-			(Map<String, String[]>)mockLiferayPortletActionRequest.getAttribute(
-				WebKeys.PORTLET_PREFERENCES_MAP);
+		Map<String, String[]> portletPreferencesMap = _processAction(
+			journalArticle1, mockLiferayPortletActionRequest);
 
 		Assert.assertArrayEquals(
 			new String[] {journalArticle1.getExternalReferenceCode()},
 			portletPreferencesMap.get("articleExternalReferenceCode"));
-		Assert.assertNull(
+		Assert.assertArrayEquals(
+			new String[] {StringPool.BLANK},
 			portletPreferencesMap.get("groupExternalReferenceCode"));
 
 		JournalArticle journalArticle2 = JournalTestUtil.addArticle(
 			_company.getGroupId(),
 			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID);
 
-		assetEntry = AssetEntryLocalServiceUtil.fetchEntry(
-			_portal.getClassNameId(JournalArticle.class.getName()),
-			journalArticle2.getResourcePrimKey());
-
-		mockLiferayPortletActionRequest.setParameter(
-			"preferences--assetEntryId--",
-			String.valueOf(assetEntry.getEntryId()));
-
-		_configurationAction.processAction(
-			portletConfig, mockLiferayPortletActionRequest,
-			new MockLiferayPortletActionResponse());
-
-		portletPreferencesMap =
-			(Map<String, String[]>)mockLiferayPortletActionRequest.getAttribute(
-				WebKeys.PORTLET_PREFERENCES_MAP);
+		portletPreferencesMap = _processAction(
+			journalArticle2, mockLiferayPortletActionRequest);
 
 		Assert.assertArrayEquals(
 			new String[] {journalArticle2.getExternalReferenceCode()},
@@ -135,6 +107,155 @@ public class JournalContentConfigurationActionTest {
 		Assert.assertArrayEquals(
 			new String[] {companyGroup.getExternalReferenceCode()},
 			portletPreferencesMap.get("groupExternalReferenceCode"));
+
+		portletPreferencesMap = _processAction(
+			journalArticle1, mockLiferayPortletActionRequest);
+
+		Assert.assertArrayEquals(
+			new String[] {journalArticle1.getExternalReferenceCode()},
+			portletPreferencesMap.get("articleExternalReferenceCode"));
+		Assert.assertArrayEquals(
+			new String[] {StringPool.BLANK},
+			portletPreferencesMap.get("groupExternalReferenceCode"));
+	}
+
+	@Test
+	public void testProcessActionWhenArticleIsFromAssetLibrary()
+		throws Exception {
+
+		_depotEntry = _depotEntryLocalService.addDepotEntry(
+			HashMapBuilder.put(
+				LocaleUtil.getDefault(), RandomTestUtil.randomString()
+			).build(),
+			HashMapBuilder.put(
+				LocaleUtil.getDefault(), RandomTestUtil.randomString()
+			).build(),
+			DepotConstants.TYPE_ASSET_LIBRARY,
+			ServiceContextTestUtil.getServiceContext());
+
+		_depotEntryGroupRelLocalService.addDepotEntryGroupRel(
+			_depotEntry.getDepotEntryId(), _group.getGroupId());
+
+		MockLiferayPortletActionRequest mockLiferayPortletActionRequest =
+			_getMockLiferayPortletActionRequest(_getThemeDisplay());
+
+		JournalArticle journalArticle1 = JournalTestUtil.addArticle(
+			_depotEntry.getGroupId(),
+			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID);
+
+		Map<String, String[]> portletPreferencesMap = _processAction(
+			journalArticle1, mockLiferayPortletActionRequest);
+
+		Group depotGroup = _depotEntry.getGroup();
+
+		Assert.assertArrayEquals(
+			new String[] {journalArticle1.getExternalReferenceCode()},
+			portletPreferencesMap.get("articleExternalReferenceCode"));
+		Assert.assertArrayEquals(
+			new String[] {depotGroup.getExternalReferenceCode()},
+			portletPreferencesMap.get("groupExternalReferenceCode"));
+
+		JournalArticle journalArticle2 = JournalTestUtil.addArticle(
+			_group.getGroupId(),
+			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID);
+
+		portletPreferencesMap = _processAction(
+			journalArticle2, mockLiferayPortletActionRequest);
+
+		Assert.assertArrayEquals(
+			new String[] {journalArticle2.getExternalReferenceCode()},
+			portletPreferencesMap.get("articleExternalReferenceCode"));
+		Assert.assertArrayEquals(
+			new String[] {StringPool.BLANK},
+			portletPreferencesMap.get("groupExternalReferenceCode"));
+	}
+
+	@Test
+	public void testProcessActionWhenArticleIsNotSelected() throws Exception {
+		MockLiferayPortletActionRequest mockLiferayPortletActionRequest =
+			_getMockLiferayPortletActionRequest(_getThemeDisplay());
+
+		JournalArticle journalArticle = JournalTestUtil.addArticle(
+			_company.getGroupId(),
+			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID);
+
+		Map<String, String[]> portletPreferencesMap = _processAction(
+			journalArticle, mockLiferayPortletActionRequest);
+
+		Group companyGroup = _company.getGroup();
+
+		Assert.assertArrayEquals(
+			new String[] {companyGroup.getExternalReferenceCode()},
+			portletPreferencesMap.get("groupExternalReferenceCode"));
+
+		portletPreferencesMap = _processAction(
+			null, mockLiferayPortletActionRequest);
+
+		Assert.assertArrayEquals(
+			new String[] {StringPool.BLANK},
+			portletPreferencesMap.get("articleExternalReferenceCode"));
+		Assert.assertArrayEquals(
+			new String[] {StringPool.BLANK},
+			portletPreferencesMap.get("groupExternalReferenceCode"));
+	}
+
+	@Test
+	public void testProcessActionWhenScopeIsPage() throws Exception {
+		Group scopeGroup = GroupTestUtil.addGroup(
+			TestPropsValues.getUserId(),
+			LayoutTestUtil.addTypePortletLayout(_group));
+
+		ThemeDisplay themeDisplay = _getThemeDisplay();
+
+		themeDisplay.setScopeGroupId(scopeGroup.getGroupId());
+
+		MockLiferayPortletActionRequest mockLiferayPortletActionRequest =
+			_getMockLiferayPortletActionRequest(themeDisplay);
+
+		JournalArticle journalArticle1 = JournalTestUtil.addArticle(
+			_group.getGroupId(),
+			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID);
+
+		Map<String, String[]> portletPreferencesMap = _processAction(
+			journalArticle1, mockLiferayPortletActionRequest);
+
+		Assert.assertArrayEquals(
+			new String[] {journalArticle1.getExternalReferenceCode()},
+			portletPreferencesMap.get("articleExternalReferenceCode"));
+		Assert.assertArrayEquals(
+			new String[] {_group.getExternalReferenceCode()},
+			portletPreferencesMap.get("groupExternalReferenceCode"));
+
+		DDMStructure ddmStructure = DDMStructureTestUtil.addStructure(
+			_group.getGroupId(), JournalArticle.class.getName());
+
+		JournalArticle journalArticle2 =
+			JournalTestUtil.addArticleWithXMLContent(
+				scopeGroup.getGroupId(),
+				DDMStructureTestUtil.getSampleStructuredContent(),
+				ddmStructure.getStructureKey(), null);
+
+		portletPreferencesMap = _processAction(
+			journalArticle2, mockLiferayPortletActionRequest);
+
+		Assert.assertArrayEquals(
+			new String[] {journalArticle2.getExternalReferenceCode()},
+			portletPreferencesMap.get("articleExternalReferenceCode"));
+		Assert.assertArrayEquals(
+			new String[] {StringPool.BLANK},
+			portletPreferencesMap.get("groupExternalReferenceCode"));
+	}
+
+	private MockLiferayPortletActionRequest _getMockLiferayPortletActionRequest(
+		ThemeDisplay themeDisplay) {
+
+		MockLiferayPortletActionRequest mockLiferayPortletActionRequest =
+			new MockLiferayPortletActionRequest();
+
+		mockLiferayPortletActionRequest.setAttribute(
+			WebKeys.THEME_DISPLAY, themeDisplay);
+
+		return mockLiferayPortletActionRequest;
 	}
 
 	private ThemeDisplay _getThemeDisplay() throws Exception {
@@ -148,6 +269,38 @@ public class JournalContentConfigurationActionTest {
 		return themeDisplay;
 	}
 
+	private Map<String, String[]> _processAction(
+			JournalArticle journalArticle,
+			MockLiferayPortletActionRequest mockLiferayPortletActionRequest)
+		throws Exception {
+
+		long assetEntryId = 0;
+
+		if (journalArticle != null) {
+			AssetEntry assetEntry = AssetEntryLocalServiceUtil.fetchEntry(
+				_portal.getClassNameId(JournalArticle.class.getName()),
+				journalArticle.getResourcePrimKey());
+
+			assetEntryId = assetEntry.getEntryId();
+		}
+
+		mockLiferayPortletActionRequest.setParameter(
+			"preferences--assetEntryId--", String.valueOf(assetEntryId));
+
+		_configurationAction.processAction(
+			PortletConfigFactoryUtil.create(
+				PortletLocalServiceUtil.getPortletById(
+					JournalContentPortletKeys.JOURNAL_CONTENT + "_INSTANCE_" +
+						RandomTestUtil.randomString()),
+				null),
+			mockLiferayPortletActionRequest,
+			new MockLiferayPortletActionResponse());
+
+		return (Map<String, String[]>)
+			mockLiferayPortletActionRequest.getAttribute(
+				WebKeys.PORTLET_PREFERENCES_MAP);
+	}
+
 	private Company _company;
 
 	@Inject
@@ -157,6 +310,15 @@ public class JournalContentConfigurationActionTest {
 		filter = "jakarta.portlet.name=" + JournalContentPortletKeys.JOURNAL_CONTENT
 	)
 	private ConfigurationAction _configurationAction;
+
+	@DeleteAfterTestRun
+	private DepotEntry _depotEntry;
+
+	@Inject
+	private DepotEntryGroupRelLocalService _depotEntryGroupRelLocalService;
+
+	@Inject
+	private DepotEntryLocalService _depotEntryLocalService;
 
 	@DeleteAfterTestRun
 	private Group _group;
