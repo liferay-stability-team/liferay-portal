@@ -137,12 +137,12 @@ public class DDMFieldAttributeUpgradeProcess extends UpgradeProcess {
 							key, languageId,
 							_jsonSerializer.serialize(jsonObject.get(key)));
 					}
-
-					preparedStatement2.executeBatch();
-
-					preparedStatement3.executeBatch();
 				}
 			}
+
+			preparedStatement2.executeBatch();
+
+			preparedStatement3.executeBatch();
 		}
 	}
 
