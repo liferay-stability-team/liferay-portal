@@ -557,9 +557,7 @@ test(
 			await page.getByRole('button', {name: 'Delete'}).click();
 
 			await expect(
-				page.getByText(
-					'The form entries are being deleted in the background. This may take a few minutes.'
-				)
+				page.getByText('Deletion started for all entries.')
 			).toBeVisible();
 		});
 
