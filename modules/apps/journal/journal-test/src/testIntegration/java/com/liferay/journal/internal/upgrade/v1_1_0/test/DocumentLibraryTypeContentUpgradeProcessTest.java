@@ -12,6 +12,7 @@ import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.json.JSONObject;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.repository.model.FileEntry;
+import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.TestInfo;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
@@ -25,8 +26,6 @@ import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.upgrade.registry.UpgradeStepRegistrator;
 import com.liferay.portal.upgrade.test.util.UpgradeTestUtil;
-
-import java.lang.reflect.Method;
 
 import java.util.List;
 
@@ -149,16 +148,10 @@ public class DocumentLibraryTypeContentUpgradeProcessTest {
 			"com.liferay.journal.internal.upgrade.v1_1_0." +
 				"DocumentLibraryTypeContentUpgradeProcess");
 
-		Class<?> upgradeProcessClass = upgradeProcess.getClass();
-
-		Method convertContentMethod = upgradeProcessClass.getDeclaredMethod(
-			"_convertContent", String.class);
-
-		convertContentMethod.setAccessible(true);
-
 		Document document = SAXReaderUtil.read(
-			(String)convertContentMethod.invoke(
-				upgradeProcess, _getContent(type, urls)));
+			ReflectionTestUtil.<String>invoke(
+				upgradeProcess, "_convertContent",
+				new Class<?>[] {String.class}, _getContent(type, urls)));
 
 		Element rootElement = document.getRootElement();
 
