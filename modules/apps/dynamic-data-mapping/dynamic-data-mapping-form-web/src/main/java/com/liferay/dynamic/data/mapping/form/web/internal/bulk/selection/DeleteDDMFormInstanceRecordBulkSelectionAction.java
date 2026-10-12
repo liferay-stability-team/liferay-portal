@@ -7,8 +7,18 @@ package com.liferay.dynamic.data.mapping.form.web.internal.bulk.selection;
 
 import com.liferay.bulk.selection.BulkSelection;
 import com.liferay.bulk.selection.BulkSelectionAction;
+import com.liferay.dynamic.data.mapping.constants.DDMFormInstanceReportConstants;
+import com.liferay.dynamic.data.mapping.exception.NoSuchFormInstanceRecordVersionException;
 import com.liferay.dynamic.data.mapping.model.DDMFormInstanceRecord;
+import com.liferay.dynamic.data.mapping.model.DDMFormInstanceRecordVersion;
+import com.liferay.dynamic.data.mapping.model.DDMFormInstanceReport;
 import com.liferay.dynamic.data.mapping.service.DDMFormInstanceRecordLocalService;
+import com.liferay.dynamic.data.mapping.service.DDMFormInstanceRecordVersionLocalService;
+import com.liferay.dynamic.data.mapping.service.DDMFormInstanceReportLocalService;
+import com.liferay.petra.string.StringPool;
+import com.liferay.portal.kernel.dao.orm.ActionableDynamicQuery;
+import com.liferay.portal.kernel.dao.orm.Property;
+import com.liferay.portal.kernel.dao.orm.PropertyFactoryUtil;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
@@ -17,9 +27,12 @@ import com.liferay.portal.kernel.security.permission.ActionKeys;
 import com.liferay.portal.kernel.security.permission.PermissionChecker;
 import com.liferay.portal.kernel.security.permission.PermissionCheckerFactoryUtil;
 import com.liferay.portal.kernel.security.permission.resource.ModelResourcePermission;
+import com.liferay.portal.kernel.util.MapUtil;
+import com.liferay.portal.kernel.workflow.WorkflowConstants;
 
 import java.io.Serializable;
 
+import java.util.Date;
 import java.util.Map;
 
 import org.osgi.service.component.annotations.Component;
@@ -44,25 +57,112 @@ public class DeleteDDMFormInstanceRecordBulkSelectionAction
 		PermissionChecker permissionChecker =
 			PermissionCheckerFactoryUtil.create(user);
 
-		bulkSelection.forEach(
-			ddmFormInstanceRecord -> {
-				try {
-					if (!_ddmFormInstanceRecordModelResourcePermission.contains(
-							permissionChecker, ddmFormInstanceRecord,
-							ActionKeys.DELETE)) {
+		try {
+			bulkSelection.forEach(
+				ddmFormInstanceRecord -> {
+					try {
+						if (!_ddmFormInstanceRecordModelResourcePermission.
+								contains(
+									permissionChecker, ddmFormInstanceRecord,
+									ActionKeys.DELETE)) {
 
-						return;
+							return;
+						}
+
+						_ddmFormInstanceRecordLocalService.
+							deleteFormInstanceRecord(
+								ddmFormInstanceRecord, false);
 					}
+					catch (Exception exception) {
+						if (_log.isWarnEnabled()) {
+							_log.warn(exception);
+						}
+					}
+				});
+		}
+		finally {
+			long formInstanceId = MapUtil.getLong(
+				bulkSelection.getParameterMap(), "formInstanceId");
 
-					_ddmFormInstanceRecordLocalService.deleteFormInstanceRecord(
-						ddmFormInstanceRecord.getFormInstanceRecordId());
+			try {
+				_rebuildFormInstanceReport(formInstanceId);
+			}
+			catch (Exception exception) {
+				_log.error(
+					"Unable to rebuild the report of form instance " +
+						formInstanceId,
+					exception);
+			}
+		}
+	}
+
+	private void _rebuildFormInstanceReport(long formInstanceId)
+		throws PortalException {
+
+		DDMFormInstanceReport ddmFormInstanceReport =
+			_ddmFormInstanceReportLocalService.
+				getFormInstanceReportByFormInstanceId(formInstanceId);
+
+		Date modifiedDate = new Date();
+
+		ddmFormInstanceReport.setModifiedDate(modifiedDate);
+
+		ddmFormInstanceReport.setData(StringPool.BLANK);
+
+		ddmFormInstanceReport =
+			_ddmFormInstanceReportLocalService.updateDDMFormInstanceReport(
+				ddmFormInstanceReport);
+
+		long formInstanceReportId =
+			ddmFormInstanceReport.getFormInstanceReportId();
+
+		ActionableDynamicQuery actionableDynamicQuery =
+			_ddmFormInstanceRecordLocalService.getActionableDynamicQuery();
+
+		actionableDynamicQuery.setAddCriteriaMethod(
+			dynamicQuery -> {
+				Property formInstanceIdProperty = PropertyFactoryUtil.forName(
+					"formInstanceId");
+
+				dynamicQuery.add(formInstanceIdProperty.eq(formInstanceId));
+
+				Property createDateProperty = PropertyFactoryUtil.forName(
+					"createDate");
+
+				dynamicQuery.add(createDateProperty.lt(modifiedDate));
+			});
+		actionableDynamicQuery.setPerformActionMethod(
+			(DDMFormInstanceRecord ddmFormInstanceRecord) -> {
+				try {
+					DDMFormInstanceRecordVersion ddmFormInstanceRecordVersion =
+						_ddmFormInstanceRecordVersionLocalService.
+							getLatestFormInstanceRecordVersion(
+								ddmFormInstanceRecord.getFormInstanceRecordId(),
+								WorkflowConstants.STATUS_APPROVED);
+
+					_ddmFormInstanceReportLocalService.
+						processFormInstanceReportEvent(
+							formInstanceReportId,
+							ddmFormInstanceRecordVersion.
+								getFormInstanceRecordVersionId(),
+							DDMFormInstanceReportConstants.
+								EVENT_ADD_RECORD_VERSION);
 				}
-				catch (PortalException portalException) {
+				catch (NoSuchFormInstanceRecordVersionException
+							noSuchFormInstanceRecordVersionException) {
+
+					if (_log.isDebugEnabled()) {
+						_log.debug(noSuchFormInstanceRecordVersionException);
+					}
+				}
+				catch (Exception exception) {
 					if (_log.isWarnEnabled()) {
-						_log.warn(portalException);
+						_log.warn(exception);
 					}
 				}
 			});
+
+		actionableDynamicQuery.performActions();
 	}
 
 	private static final Log _log = LogFactoryUtil.getLog(
@@ -77,5 +177,13 @@ public class DeleteDDMFormInstanceRecordBulkSelectionAction
 	)
 	private ModelResourcePermission<DDMFormInstanceRecord>
 		_ddmFormInstanceRecordModelResourcePermission;
+
+	@Reference
+	private DDMFormInstanceRecordVersionLocalService
+		_ddmFormInstanceRecordVersionLocalService;
+
+	@Reference
+	private DDMFormInstanceReportLocalService
+		_ddmFormInstanceReportLocalService;
 
 }
