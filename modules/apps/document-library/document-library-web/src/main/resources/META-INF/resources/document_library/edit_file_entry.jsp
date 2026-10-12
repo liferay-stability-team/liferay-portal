@@ -79,6 +79,18 @@ if (fileEntry != null) {
 	pending = fileVersion.isPending();
 }
 
+boolean checkInOnPublish = false;
+
+if (checkedOut) {
+	long workflowFileEntryTypeId = DLFileEntryTypeConstants.FILE_ENTRY_TYPE_ID_BASIC_DOCUMENT;
+
+	if (dlFileEntryType != null) {
+		workflowFileEntryTypeId = dlFileEntryType.getFileEntryTypeId();
+	}
+
+	checkInOnPublish = DLUtil.hasWorkflowDefinitionLink(company.getCompanyId(), scopeGroupId, folderId, workflowFileEntryTypeId);
+}
+
 boolean saveAsDraft = false;
 
 DLPortletInstanceSettings dlPortletInstanceSettings = dlRequestHelper.getDLPortletInstanceSettings();
@@ -179,7 +191,7 @@ renderResponse.setTitle(headerTitle);
 		<liferay-portlet:param name="mvcRenderCommandName" value="/document_library/edit_file_entry" />
 	</liferay-portlet:actionURL>
 
-	<aui:form action="<%= editFileEntryURL %>" cssClass="lfr-dynamic-form" enctype="multipart/form-data" method="post" name="fm" onSubmit='<%= "event.preventDefault(); " + liferayPortletResponse.getNamespace() + "saveFileEntry(" + saveAsDraft + ");" %>'>
+	<aui:form action="<%= editFileEntryURL %>" cssClass="lfr-dynamic-form" enctype="multipart/form-data" method="post" name="fm" onSubmit='<%= "event.preventDefault(); " + liferayPortletResponse.getNamespace() + "publishFileEntry();" %>'>
 		<aui:input name="<%= Constants.CMD %>" type="hidden" />
 		<aui:input name="redirect" type="hidden" value="<%= redirect %>" />
 		<aui:input name="portletResource" type="hidden" value='<%= ParamUtil.getString(request, "portletResource") %>' />
@@ -722,6 +734,21 @@ renderResponse.setTitle(headerTitle);
 		Liferay.Util.setFormValues(form, {
 			<%= Constants.CMD %>: '<%= Constants.CHECKOUT %>',
 		});
+	}
+
+	function <portlet:namespace />publishFileEntry() {
+		var cmdElement = Liferay.Util.getFormElement(form, 'cmd');
+
+		if (
+			<%= checkInOnPublish %> &&
+			cmdElement &&
+			cmdElement.value !== '<%= Constants.CANCEL_CHECKOUT %>'
+		) {
+			<portlet:namespace />checkIn();
+		}
+		else {
+			<portlet:namespace />saveFileEntry(<%= saveAsDraft %>);
+		}
 	}
 
 	function <portlet:namespace />saveFileEntry(draft) {
