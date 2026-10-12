@@ -493,6 +493,54 @@ public class StagedGroupStagedModelDataHandler
 					type, portletsElement, servicesElement, permissions);
 			}
 		}
+
+		if (!ExportImportThreadLocal.isLayoutStagingInProcess()) {
+			return;
+		}
+
+		long companyId = portletDataContext.getCompanyId();
+
+		for (Layout layout : layouts) {
+			if (layout.isDraftLayout() ||
+				!ArrayUtil.contains(layoutIds, layout.getLayoutId())) {
+
+				continue;
+			}
+
+			long plid = layout.getPlid();
+
+			List<PortletPreferences> layoutPortletPreferencesList =
+				_portletPreferencesLocalService.getPortletPreferences(
+					PortletKeys.PREFS_OWNER_ID_DEFAULT,
+					PortletKeys.PREFS_OWNER_TYPE_LAYOUT, plid);
+
+			for (PortletPreferences portletPreferences :
+					layoutPortletPreferencesList) {
+
+				String portletId = portletPreferences.getPortletId();
+
+				Portlet portlet = _portletLocalService.getPortletById(
+					companyId, portletId);
+
+				if (portlet == null) {
+					continue;
+				}
+
+				PortletDataHandler portletDataHandler =
+					portlet.getPortletDataHandlerInstance();
+
+				if ((portletDataHandler == null) ||
+					!portletDataHandler.isDisplayPortlet()) {
+
+					continue;
+				}
+
+				_exportPortlet(
+					portletDataContext, portletId, plid, layout.getGroupId(),
+					StringPool.BLANK, StringPool.BLANK, type, portletsElement,
+					servicesElement, permissions);
+			}
+		}
 	}
 
 	private void _importSitePortlets(
