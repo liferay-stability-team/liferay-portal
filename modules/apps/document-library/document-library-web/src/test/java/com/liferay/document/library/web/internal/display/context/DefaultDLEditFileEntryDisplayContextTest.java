@@ -6,6 +6,7 @@
 package com.liferay.document.library.web.internal.display.context;
 
 import com.liferay.document.library.kernel.model.DLFileEntryType;
+import com.liferay.document.library.kernel.util.DLUtil;
 import com.liferay.document.library.kernel.util.DLValidator;
 import com.liferay.document.library.web.internal.display.context.helper.FileEntryDisplayContextHelper;
 import com.liferay.dynamic.data.mapping.form.values.factory.DDMFormValuesFactory;
@@ -24,6 +25,7 @@ import org.junit.Before;
 import org.junit.ClassRule;
 import org.junit.Test;
 
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -74,6 +76,52 @@ public class DefaultDLEditFileEntryDisplayContextTest {
 
 		Assert.assertTrue(
 			defaultDLEditFileEntryDisplayContext.isPublishButtonDisabled());
+	}
+
+	@Test
+	public void testIsPublishButtonDisabledWhenCheckedOut() throws Exception {
+		DefaultDLEditFileEntryDisplayContext
+			defaultDLEditFileEntryDisplayContext =
+				_getDefaultDLEditFileEntryDisplayContext();
+
+		FileEntryDisplayContextHelper fileEntryDisplayContextHelper =
+			Mockito.mock(FileEntryDisplayContextHelper.class);
+
+		Mockito.when(
+			fileEntryDisplayContextHelper.isCheckedOut()
+		).thenReturn(
+			true
+		);
+
+		ReflectionTestUtil.setFieldValue(
+			defaultDLEditFileEntryDisplayContext,
+			"_fileEntryDisplayContextHelper", fileEntryDisplayContextHelper);
+
+		try (MockedStatic<DLUtil> dlUtilMockedStatic = Mockito.mockStatic(
+				DLUtil.class)) {
+
+			dlUtilMockedStatic.when(
+				() -> DLUtil.hasWorkflowDefinitionLink(
+					Mockito.anyLong(), Mockito.anyLong(), Mockito.anyLong(),
+					Mockito.anyLong())
+			).thenReturn(
+				false
+			);
+
+			Assert.assertFalse(
+				defaultDLEditFileEntryDisplayContext.isPublishButtonDisabled());
+
+			dlUtilMockedStatic.when(
+				() -> DLUtil.hasWorkflowDefinitionLink(
+					Mockito.anyLong(), Mockito.anyLong(), Mockito.anyLong(),
+					Mockito.anyLong())
+			).thenReturn(
+				true
+			);
+
+			Assert.assertTrue(
+				defaultDLEditFileEntryDisplayContext.isPublishButtonDisabled());
+		}
 	}
 
 	private DefaultDLEditFileEntryDisplayContext
