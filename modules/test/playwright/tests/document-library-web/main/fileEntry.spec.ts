@@ -1288,6 +1288,90 @@ test(
 );
 
 test(
+	'Submit a checked out document for workflow from the edit screen',
+	{
+		tag: ['@LPD-109597'],
+	},
+	async ({
+		apiHelpers,
+		documentLibraryEditFilePage,
+		documentLibraryPage,
+		page,
+		site,
+		workflowTasksPage,
+	}) => {
+		const document = await apiHelpers.headlessDelivery.postDocument(
+			site.id,
+			createReadStream(path.join(__dirname, '/dependencies/image1.jpeg')),
+			{title: getRandomString()}
+		);
+
+		const company =
+			await apiHelpers.jsonWebServicesCompany.getCompanyByWebId(
+				'liferay.com'
+			);
+		const userAccount =
+			await apiHelpers.headlessAdminUser.getMyUserAccount();
+		const workflowDefinition =
+			await apiHelpers.headlessAdminWorkflow.getWorkflowDefinitionByName(
+				'Single Approver'
+			);
+
+		await apiHelpers.jsonWebServicesWorkflowDefinitionLink.addWorkflowDefinitionLink(
+			{
+				className: 'com.liferay.document.library.kernel.model.DLFolder',
+				classPK: 0,
+				companyId: company.companyId,
+				groupId: site.id,
+				typePK: -1,
+				userId: userAccount.id,
+				workflowDefinitionName: workflowDefinition.name,
+				workflowDefinitionVersion: workflowDefinition.version,
+			}
+		);
+
+		// Check out the document
+
+		await documentLibraryPage.goto(site.friendlyUrlPath);
+		await documentLibraryPage.goToFileEntryAction(
+			'Checkout',
+			document.title
+		);
+		await waitForAlert(page);
+
+		// Submit the document for workflow from the edit screen
+
+		const title = getRandomString();
+
+		await documentLibraryPage.goToFileEntryAction('Edit', document.title);
+		await page.waitForURL(/edit_file_entry/);
+		await documentLibraryEditFilePage.submitWorkflowForBasicFileEntry(
+			title
+		);
+
+		const dialog = page.getByRole('dialog');
+
+		await dialog.getByRole('button', {exact: true, name: 'Cancel'}).click();
+
+		await expect(dialog).toBeHidden();
+
+		await documentLibraryEditFilePage.submitForWorkflowButton.click();
+
+		await dialog.getByRole('button', {exact: true, name: 'Save'}).click();
+
+		// Check that the document is checked in and pending
+
+		await expect(
+			page.locator('.card-body', {hasText: title})
+		).toContainText('Pending');
+
+		await workflowTasksPage.goToAssignedToMyRoles();
+
+		await expect(page.getByRole('link', {name: title})).toBeVisible();
+	}
+);
+
+test(
 	'Check accessibility of the search container in DM',
 	{
 		tag: ['@LPD-83985'],
