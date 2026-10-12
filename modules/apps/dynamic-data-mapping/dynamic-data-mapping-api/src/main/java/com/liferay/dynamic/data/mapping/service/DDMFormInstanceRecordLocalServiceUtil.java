@@ -128,6 +128,15 @@ public class DDMFormInstanceRecordLocalServiceUtil {
 	}
 
 	public static DDMFormInstanceRecord deleteFormInstanceRecord(
+			DDMFormInstanceRecord ddmFormInstanceRecord,
+			boolean updateFormInstanceReport)
+		throws PortalException {
+
+		return getService().deleteFormInstanceRecord(
+			ddmFormInstanceRecord, updateFormInstanceReport);
+	}
+
+	public static DDMFormInstanceRecord deleteFormInstanceRecord(
 			long ddmFormInstanceRecordId)
 		throws PortalException {
 
@@ -540,4 +549,4 @@ public class DDMFormInstanceRecordLocalServiceUtil {
 			DDMFormInstanceRecordLocalService.class);
 
 }
-// LIFERAY-SERVICE-BUILDER-HASH:-740446410
+// LIFERAY-SERVICE-BUILDER-HASH:1755540410

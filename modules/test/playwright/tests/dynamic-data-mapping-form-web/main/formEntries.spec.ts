@@ -496,3 +496,79 @@ test(
 		});
 	}
 );
+
+test(
+	'should delete all entries in the background when "Select All" is used across pages',
+	{tag: ['@LPD-107097']},
+	async ({
+		apiHelpers,
+		formBuilderPage,
+		formBuilderSidePanelPage,
+		formsPage,
+		page,
+		site,
+	}) => {
+		const formTitle = 'Form' + getRandomInt();
+
+		await test.step('publish form with a single text field', async () => {
+			await formBuilderPage.goToNew(site.friendlyUrlPath);
+
+			await formBuilderSidePanelPage.addTextButton.dblclick();
+
+			await formBuilderPage.formTitle.fill(formTitle);
+
+			await formBuilderPage.clickPublishFormButton();
+		});
+
+		await test.step('create more entries than fit on one page', async () => {
+			const {items} = await apiHelpers.headlessForm.getSiteFormsPage(
+				site.id
+			);
+
+			const form = items.find(({name}) => name === formTitle);
+
+			for (let i = 0; i < 21; i++) {
+				await apiHelpers.headlessForm.postFormFormRecord(form.id);
+			}
+		});
+
+		await test.step('select all entries across pages and delete them', async () => {
+			await formsPage.goTo(site.friendlyUrlPath);
+
+			await page
+				.getByRole('row', {name: `Select ${formTitle}`})
+				.getByLabel('Show Actions')
+				.click();
+
+			await page.getByRole('menuitem', {name: 'View Entries'}).click();
+
+			await expect(
+				page.getByText('Showing 1 to 20 of 21 entries.')
+			).toBeVisible();
+
+			await page.getByLabel('Select All Items on the Page').click();
+
+			await page.getByRole('button', {name: 'Select All'}).click();
+
+			await expect(page.getByText('All Selected')).toBeVisible();
+
+			page.once('dialog', (dialog) => dialog.accept());
+
+			await page.getByRole('button', {name: 'Delete'}).click();
+
+			await expect(
+				page.getByText('Deletion started for all entries.')
+			).toBeVisible();
+		});
+
+		await test.step('assert that all entries are deleted', async () => {
+			await expect(async () => {
+				await page.reload();
+
+				await expect(
+					page.getByText('There are no entries.')
+				).toBeVisible();
+			}).toPass();
+		});
+	}
+);

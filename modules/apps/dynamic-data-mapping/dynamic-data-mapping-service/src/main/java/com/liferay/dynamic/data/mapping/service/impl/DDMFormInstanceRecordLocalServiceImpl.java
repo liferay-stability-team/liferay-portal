@@ -168,19 +168,31 @@ public class DDMFormInstanceRecordLocalServiceImpl
 
 	@Indexable(type = IndexableType.DELETE)
 	@Override
+	public DDMFormInstanceRecord deleteFormInstanceRecord(
+			DDMFormInstanceRecord ddmFormInstanceRecord)
+		throws PortalException {
+
+		return ddmFormInstanceRecordLocalService.deleteFormInstanceRecord(
+			ddmFormInstanceRecord, true);
+	}
+
+	@Indexable(type = IndexableType.DELETE)
+	@Override
 	@SystemEvent(
 		action = SystemEventConstants.ACTION_SKIP,
 		type = SystemEventConstants.TYPE_DELETE
 	)
 	public DDMFormInstanceRecord deleteFormInstanceRecord(
-			DDMFormInstanceRecord ddmFormInstanceRecord)
+			DDMFormInstanceRecord ddmFormInstanceRecord,
+			boolean updateFormInstanceReport)
 		throws PortalException {
 
 		DDMFormInstanceRecordVersion ddmFormInstanceRecordVersion =
 			ddmFormInstanceRecord.getLatestFormInstanceRecordVersion();
 
-		if (ddmFormInstanceRecordVersion.getStatus() ==
-				WorkflowConstants.STATUS_APPROVED) {
+		if (updateFormInstanceReport &&
+			(ddmFormInstanceRecordVersion.getStatus() ==
+				WorkflowConstants.STATUS_APPROVED)) {
 
 			DDMFormInstanceReport ddmFormInstanceReport =
 				_ddmFormInstanceReportLocalService.
