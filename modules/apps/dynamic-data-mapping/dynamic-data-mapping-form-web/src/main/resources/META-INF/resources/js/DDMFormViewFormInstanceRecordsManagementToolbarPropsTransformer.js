@@ -7,7 +7,7 @@ import {openConfirmModal} from 'frontend-js-components-web';
 import {getCheckedCheckboxes, postForm} from 'frontend-js-web';
 
 export default function propsTransformer({
-	additionalProps: {deleteFormInstanceRecordURL, formInstanceId},
+	additionalProps: {deleteFormInstanceRecordURL},
 	portletNamespace,
 	...otherProps
 }) {
@@ -37,7 +37,6 @@ export default function propsTransformer({
 												form,
 												`${portletNamespace}allRowIds`
 											),
-										formInstanceId,
 										selectAll:
 											Boolean(
 												searchContainer.select?.get(

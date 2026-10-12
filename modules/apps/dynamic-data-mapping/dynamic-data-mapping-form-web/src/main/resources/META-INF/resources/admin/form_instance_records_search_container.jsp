@@ -25,8 +25,6 @@ PortletURL portletURL = ddmFormViewFormInstanceRecordsDisplayContext.getPortletU
 	additionalProps='<%=
 		HashMapBuilder.<String, Object>put(
 			"deleteFormInstanceRecordURL", deleteFormInstanceRecordURL.toString()
-		).put(
-			"formInstanceId", ddmFormInstance.getFormInstanceId()
 		).build()
 	%>'
 	clearResultsURL="<%= ddmFormViewFormInstanceRecordsDisplayContext.getClearResultsURL() %>"
@@ -59,6 +57,8 @@ PortletURL portletURL = ddmFormViewFormInstanceRecordsDisplayContext.getPortletU
 >
 	<aui:form action="<%= portletURL %>" method="post" name="searchContainerForm">
 		<aui:input name="deleteFormInstanceRecordIds" type="hidden" />
+		<aui:input name="formInstanceId" type="hidden" value="<%= ddmFormInstance.getFormInstanceId() %>" />
+		<aui:input name="selectAll" type="hidden" value="<%= false %>" />
 
 		<liferay-ui:search-container
 			id="<%= ddmFormViewFormInstanceRecordsDisplayContext.getSearchContainerId() %>"
