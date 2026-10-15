@@ -346,7 +346,14 @@ public class DefaultDLEditFileEntryDisplayContext
 
 	@Override
 	public boolean isPublishButtonDisabled() {
-		return _fileEntryDisplayContextHelper.isCheckedOutByOther();
+		if (_fileEntryDisplayContextHelper.isCheckedOutByOther() ||
+			(_fileEntryDisplayContextHelper.isCheckedOut() &&
+			 _hasFolderWorkflowDefinitionLink())) {
+
+			return true;
+		}
+
+		return false;
 	}
 
 	@Override
