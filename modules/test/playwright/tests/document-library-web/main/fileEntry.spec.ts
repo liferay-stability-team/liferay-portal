@@ -1288,6 +1288,109 @@ test(
 );
 
 test(
+	'Save a checked out document before submitting it for workflow',
+	{
+		tag: ['@LPD-109597'],
+	},
+	async ({
+		apiHelpers,
+		documentLibraryEditFilePage,
+		documentLibraryPage,
+		page,
+		site,
+		workflowTasksPage,
+	}) => {
+		const document = await apiHelpers.headlessDelivery.postDocument(
+			site.id,
+			createReadStream(path.join(__dirname, '/dependencies/image1.jpeg')),
+			{title: getRandomString()}
+		);
+
+		const company =
+			await apiHelpers.jsonWebServicesCompany.getCompanyByWebId(
+				'liferay.com'
+			);
+		const userAccount =
+			await apiHelpers.headlessAdminUser.getMyUserAccount();
+		const workflowDefinition =
+			await apiHelpers.headlessAdminWorkflow.getWorkflowDefinitionByName(
+				'Single Approver'
+			);
+
+		await apiHelpers.jsonWebServicesWorkflowDefinitionLink.addWorkflowDefinitionLink(
+			{
+				className: 'com.liferay.document.library.kernel.model.DLFolder',
+				classPK: 0,
+				companyId: company.companyId,
+				groupId: site.id,
+				typePK: -1,
+				userId: userAccount.id,
+				workflowDefinitionName: workflowDefinition.name,
+				workflowDefinitionVersion: workflowDefinition.version,
+			}
+		);
+
+		// Check out the document
+
+		await documentLibraryPage.goto(site.friendlyUrlPath);
+		await documentLibraryPage.goToFileEntryAction(
+			'Checkout',
+			document.title
+		);
+		await waitForAlert(page);
+
+		// Save the checked out document
+
+		await documentLibraryPage.goToFileEntryAction('Edit', document.title);
+		await page.waitForURL(/edit_file_entry/);
+
+		await expect(
+			documentLibraryEditFilePage.submitForWorkflowButton
+		).toHaveCount(0);
+
+		const draftTitle = getRandomString();
+
+		await documentLibraryEditFilePage.titleSelector.fill(draftTitle);
+
+		await page.getByRole('button', {exact: true, name: 'Save'}).click();
+
+		// Check that the document is still checked out as a draft
+
+		await expect(
+			page.locator('.card-body', {hasText: draftTitle})
+		).toContainText('Draft');
+
+		// Save and check in the document
+
+		const title = getRandomString();
+
+		await documentLibraryPage.goToFileEntryAction('Edit', draftTitle);
+		await page.waitForURL(/edit_file_entry/);
+
+		await documentLibraryEditFilePage.titleSelector.fill(title);
+
+		await page
+			.getByRole('button', {exact: true, name: 'Save and Check In'})
+			.click();
+
+		await page
+			.getByRole('dialog')
+			.getByRole('button', {exact: true, name: 'Save'})
+			.click();
+
+		// Check that the document is checked in and pending
+
+		await expect(
+			page.locator('.card-body', {hasText: title})
+		).toContainText('Pending');
+
+		await workflowTasksPage.goToAssignedToMyRoles();
+
+		await expect(page.getByRole('link', {name: title})).toBeVisible();
+	}
+);
+
+test(
 	'Check accessibility of the search container in DM',
 	{
 		tag: ['@LPD-83985'],
