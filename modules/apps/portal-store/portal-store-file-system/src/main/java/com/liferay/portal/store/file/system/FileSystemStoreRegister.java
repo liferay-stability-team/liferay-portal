@@ -6,6 +6,7 @@
 package com.liferay.portal.store.file.system;
 
 import com.liferay.document.library.kernel.store.Store;
+import com.liferay.document.library.kernel.store.StoreAreaProcessor;
 import com.liferay.portal.configuration.metatype.bnd.util.ConfigurableUtil;
 import com.liferay.portal.convert.documentlibrary.FileSystemStoreRootDirException;
 import com.liferay.portal.kernel.util.GetterUtil;
@@ -50,18 +51,38 @@ public class FileSystemStoreRegister {
 		FileSystemStore fileSystemStore = new FileSystemStore(
 			fileSystemStoreConfiguration);
 
-		_serviceRegistration = bundleContext.registerService(
-			Store.class, _wrapStore(fileSystemStore),
+		Store store = _wrapStore(fileSystemStore);
+
+		_storeServiceRegistration = bundleContext.registerService(
+			Store.class, store,
 			HashMapDictionaryBuilder.<String, Object>put(
 				"rootDir", fileSystemStore.getRootDir()
 			).put(
+				"store.type", FileSystemStore.class.getName()
+			).build());
+
+		if (GetterUtil.getBoolean(
+				PropsUtil.get("dl.store.file.system.lenient"))) {
+
+			return;
+		}
+
+		_storeAreaProcessorServiceRegistration = bundleContext.registerService(
+			StoreAreaProcessor.class,
+			new FileSystemStoreAreaProcessor(
+				fileSystemStore.getRootDir(), store),
+			HashMapDictionaryBuilder.<String, Object>put(
 				"store.type", FileSystemStore.class.getName()
 			).build());
 	}
 
 	@Deactivate
 	protected void deactivate() {
-		_serviceRegistration.unregister();
+		if (_storeAreaProcessorServiceRegistration != null) {
+			_storeAreaProcessorServiceRegistration.unregister();
+		}
+
+		_storeServiceRegistration.unregister();
 	}
 
 	private Store _wrapStore(Store store) {
@@ -74,6 +95,8 @@ public class FileSystemStoreRegister {
 		return new LenientStore(new SafeFileNameStore(store));
 	}
 
-	private ServiceRegistration<Store> _serviceRegistration;
+	private ServiceRegistration<StoreAreaProcessor>
+		_storeAreaProcessorServiceRegistration;
+	private ServiceRegistration<Store> _storeServiceRegistration;
 
 }
