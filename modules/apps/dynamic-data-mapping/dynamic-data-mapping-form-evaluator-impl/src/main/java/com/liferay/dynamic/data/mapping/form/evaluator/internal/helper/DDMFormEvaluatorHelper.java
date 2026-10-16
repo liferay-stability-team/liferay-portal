@@ -135,9 +135,7 @@ public class DDMFormEvaluatorHelper {
 			ddmFormRules = _ddmForm.getDDMFormRules();
 		}
 
-		_evaluateDDMFormRules(ddmFormRules, false);
-
-		_evaluateDDMFormRules(ddmFormRules, true);
+		_evaluateDDMFormRules(ddmFormRules);
 
 		_resetInvisibleFieldValue();
 
@@ -271,10 +269,8 @@ public class DDMFormEvaluatorHelper {
 			ddmFormEvaluatorEvaluateResponse.getDDMFormFieldsPropertyChanges());
 	}
 
-	private void _evaluateDDMFormRule(
-		DDMFormRule ddmFormRule, boolean ddmFormRuleConditionEvaluationResult) {
-
-		if (ddmFormRuleConditionEvaluationResult) {
+	private void _evaluateDDMFormRule(DDMFormRule ddmFormRule) {
+		if (_evaluateDDMFormRuleCondition(ddmFormRule.getCondition())) {
 			List<String> actions = ddmFormRule.getActions();
 
 			StringBundler sb = new StringBundler((actions.size() * 2) - 1);
@@ -330,23 +326,15 @@ public class DDMFormEvaluatorHelper {
 		}
 	}
 
-	private void _evaluateDDMFormRules(
-		List<DDMFormRule> ddmFormRules,
-		Boolean ddmFormRuleConditionEvaluationResult) {
-
+	private void _evaluateDDMFormRules(List<DDMFormRule> ddmFormRules) {
 		for (DDMFormRule ddmFormRule : ddmFormRules) {
 			if (!ddmFormRule.isEnabled() ||
-				Validator.isNull(ddmFormRule.getCondition()) ||
-				!Objects.equals(
-					ddmFormRuleConditionEvaluationResult,
-					_evaluateDDMFormRuleCondition(
-						ddmFormRule.getCondition()))) {
+				Validator.isNull(ddmFormRule.getCondition())) {
 
 				continue;
 			}
 
-			_evaluateDDMFormRule(
-				ddmFormRule, ddmFormRuleConditionEvaluationResult);
+			_evaluateDDMFormRule(ddmFormRule);
 		}
 	}
 
