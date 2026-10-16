@@ -43,6 +43,26 @@ AICreatorOpenAICompanyConfigurationDisplayContext aiCreatorOpenAICompanyConfigur
 	</clay:content-col>
 </clay:content-row>
 
+<clay:content-row
+	cssClass="c-mb-4"
+>
+	<clay:content-col
+		expand="<%= true %>"
+	>
+		<aui:input helpMessage="image-model-help" label="image-model" name="imageModel" type="text" value="<%= aiCreatorOpenAICompanyConfigurationDisplayContext.getImageModel() %>" />
+	</clay:content-col>
+</clay:content-row>
+
+<clay:content-row
+	cssClass="c-mb-4"
+>
+	<clay:content-col
+		expand="<%= true %>"
+	>
+		<aui:input helpMessage="image-sizes-help" label="image-sizes" name="imageSizes" type="text" value="<%= aiCreatorOpenAICompanyConfigurationDisplayContext.getImageSizes() %>" />
+	</clay:content-col>
+</clay:content-row>
+
 <clay:content-row>
 	<clay:content-col
 		cssClass="ai-creator-config-checkbox"
@@ -64,10 +84,10 @@ AICreatorOpenAICompanyConfigurationDisplayContext aiCreatorOpenAICompanyConfigur
 		expand="<%= true %>"
 	>
 		<clay:checkbox
-			checked="<%= aiCreatorOpenAICompanyConfigurationDisplayContext.isDALLEEnabled() %>"
-			id='<%= liferayPortletResponse.getNamespace() + "enableDALLE" %>'
-			label='<%= LanguageUtil.get(request, "enable-dalle-to-create-images") %>'
-			name='<%= liferayPortletResponse.getNamespace() + "enableDALLE" %>'
+			checked="<%= aiCreatorOpenAICompanyConfigurationDisplayContext.isOpenAIImageGenerationEnabled() %>"
+			id='<%= liferayPortletResponse.getNamespace() + "enableOpenAIImageGeneration" %>'
+			label='<%= LanguageUtil.get(request, "enable-openai-image-generation") %>'
+			name='<%= liferayPortletResponse.getNamespace() + "enableOpenAIImageGeneration" %>'
 		/>
 	</clay:content-col>
 </clay:content-row>

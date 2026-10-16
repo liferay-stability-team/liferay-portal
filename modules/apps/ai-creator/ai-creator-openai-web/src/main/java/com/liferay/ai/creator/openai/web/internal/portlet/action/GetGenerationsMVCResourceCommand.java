@@ -43,8 +43,10 @@ public class GetGenerationsMVCResourceCommand extends BaseMVCResourceCommand {
 		ThemeDisplay themeDisplay = (ThemeDisplay)resourceRequest.getAttribute(
 			WebKeys.THEME_DISPLAY);
 
-		if (!aiCreatorOpenAIConfigurationManager.isAICreatorDALLEGroupEnabled(
-				themeDisplay.getCompanyId(), themeDisplay.getScopeGroupId())) {
+		if (!aiCreatorOpenAIConfigurationManager.
+				isAICreatorOpenAIImageGenerationGroupEnabled(
+					themeDisplay.getCompanyId(),
+					themeDisplay.getScopeGroupId())) {
 
 			addDisabledConfigurationErrorMessage(
 				resourceRequest, resourceResponse);
@@ -73,8 +75,12 @@ public class GetGenerationsMVCResourceCommand extends BaseMVCResourceCommand {
 
 		try {
 			String[] generations = aiCreatorOpenAIClient.getGenerations(
-				apiKey, prompt,
-				ParamUtil.getString(resourceRequest, "size", "256x256"),
+				apiKey,
+				aiCreatorOpenAIConfigurationManager.
+					getAICreatorOpenAIGroupImageModel(
+						themeDisplay.getCompanyId(),
+						themeDisplay.getScopeGroupId()),
+				prompt, ParamUtil.getString(resourceRequest, "size"),
 				ParamUtil.getInteger(resourceRequest, "numberOfImages", 1));
 
 			PortletSession portletSession = resourceRequest.getPortletSession();

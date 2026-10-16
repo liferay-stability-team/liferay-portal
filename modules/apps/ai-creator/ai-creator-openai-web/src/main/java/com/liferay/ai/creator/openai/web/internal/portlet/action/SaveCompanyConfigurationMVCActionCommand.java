@@ -5,7 +5,6 @@
 
 package com.liferay.ai.creator.openai.web.internal.portlet.action;
 
-import com.liferay.ai.creator.openai.configuration.manager.AICreatorOpenAIConfigurationManager;
 import com.liferay.configuration.admin.constants.ConfigurationAdminPortletKeys;
 import com.liferay.portal.kernel.module.configuration.ConfigurationException;
 import com.liferay.portal.kernel.portlet.bridges.mvc.MVCActionCommand;
@@ -17,7 +16,6 @@ import com.liferay.portal.kernel.theme.ThemeDisplay;
 import jakarta.portlet.PortletException;
 
 import org.osgi.service.component.annotations.Component;
-import org.osgi.service.component.annotations.Reference;
 
 /**
  * @author Lourdes Fernández Besada
@@ -50,18 +48,15 @@ public class SaveCompanyConfigurationMVCActionCommand
 
 	@Override
 	protected void saveAICreatorOpenAIConfiguration(
-			String apiKey, boolean enableChatGPT, boolean enableDALLE,
-			ThemeDisplay themeDisplay)
+			String apiKey, boolean enableChatGPT,
+			boolean enableOpenAIImageGeneration, String imageModel,
+			String imageSizes, ThemeDisplay themeDisplay)
 		throws ConfigurationException {
 
-		_aiCreatorOpenAIConfigurationManager.
+		aiCreatorOpenAIConfigurationManager.
 			saveAICreatorOpenAICompanyConfiguration(
 				themeDisplay.getCompanyId(), apiKey, enableChatGPT,
-				enableDALLE);
+				enableOpenAIImageGeneration, imageModel, imageSizes);
 	}
-
-	@Reference
-	private AICreatorOpenAIConfigurationManager
-		_aiCreatorOpenAIConfigurationManager;
 
 }

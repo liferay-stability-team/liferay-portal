@@ -19,6 +19,7 @@ import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.ContentTypes;
 import com.liferay.portal.kernel.util.Http;
 import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.portal.kernel.util.Validator;
 
 import java.io.InputStream;
 
@@ -93,7 +94,8 @@ public class AICreatorOpenAIClientImpl implements AICreatorOpenAIClient {
 
 	@Override
 	public String[] getGenerations(
-			String apiKey, String prompt, String size, int numberOfImages)
+			String apiKey, String model, String prompt, String size,
+			int numberOfImages)
 		throws Exception {
 
 		String[] urls = new String[0];
@@ -105,7 +107,7 @@ public class AICreatorOpenAIClientImpl implements AICreatorOpenAIClient {
 		options.setLocation(ENDPOINT_GENERATIONS);
 		options.setBody(
 			JSONUtil.put(
-				"model", "dall-e-2"
+				"model", model
 			).put(
 				"n", numberOfImages
 			).put(
@@ -124,7 +126,15 @@ public class AICreatorOpenAIClientImpl implements AICreatorOpenAIClient {
 			for (int i = 0; i < dataJSONArray.length(); i++) {
 				JSONObject dataJSONObject = dataJSONArray.getJSONObject(i);
 
-				urls = ArrayUtil.append(urls, dataJSONObject.getString("url"));
+				String url = dataJSONObject.getString("url");
+
+				if (Validator.isNull(url)) {
+					url =
+						"data:image/png;base64," +
+							dataJSONObject.getString("b64_json");
+				}
+
+				urls = ArrayUtil.append(urls, url);
 			}
 		}
 
@@ -132,11 +142,11 @@ public class AICreatorOpenAIClientImpl implements AICreatorOpenAIClient {
 	}
 
 	@Override
-	public void validateAPIKey(String apiKey) throws Exception {
+	public void validateAPIKey(String apiKey, String model) throws Exception {
 		Http.Options options = new Http.Options();
 
 		options.addHeader("Authorization", "Bearer " + apiKey);
-		options.setLocation(ENDPOINT_VALIDATION);
+		options.setLocation(ENDPOINT_MODELS + model);
 
 		_getResponseJSONObject(options);
 	}
@@ -147,8 +157,8 @@ public class AICreatorOpenAIClientImpl implements AICreatorOpenAIClient {
 	protected static final String ENDPOINT_GENERATIONS =
 		"https://api.openai.com/v1/images/generations";
 
-	protected static final String ENDPOINT_VALIDATION =
-		"https://api.openai.com/v1/models/gpt-3.5-turbo";
+	protected static final String ENDPOINT_MODELS =
+		"https://api.openai.com/v1/models/";
 
 	private JSONObject _getResponseJSONObject(Http.Options options)
 		throws Exception {
