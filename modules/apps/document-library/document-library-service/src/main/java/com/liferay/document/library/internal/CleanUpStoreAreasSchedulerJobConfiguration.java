@@ -17,6 +17,8 @@ import com.liferay.portal.kernel.scheduler.SchedulerJobConfiguration;
 import com.liferay.portal.kernel.scheduler.TimeUnit;
 import com.liferay.portal.kernel.scheduler.TriggerConfiguration;
 import com.liferay.portal.kernel.service.CompanyLocalService;
+import com.liferay.portal.kernel.util.PropsKeys;
+import com.liferay.portal.kernel.util.PropsUtil;
 
 import java.time.Duration;
 
@@ -111,7 +113,9 @@ public class CleanUpStoreAreasSchedulerJobConfiguration
 	private static final Snapshot<StoreAreaProcessor>
 		_storeAreaProcessorSnapshot = new Snapshot<>(
 			CleanUpStoreAreasSchedulerJobConfiguration.class,
-			StoreAreaProcessor.class, "(default=true)", true);
+			StoreAreaProcessor.class,
+			"(store.type=" + PropsUtil.get(PropsKeys.DL_STORE_IMPL) + ")",
+			true);
 
 	@Reference
 	private CompanyLocalService _companyLocalService;
