@@ -201,7 +201,7 @@ public class JournalContentPortletLayoutListener
 			return null;
 		}
 
-		long groupId = layout.getGroupId();
+		long groupId = _portal.getScopeGroupId(layout, portletId);
 
 		String groupExternalReferenceCode = GetterUtil.getString(
 			portletPreferences.getValue("groupExternalReferenceCode", null));

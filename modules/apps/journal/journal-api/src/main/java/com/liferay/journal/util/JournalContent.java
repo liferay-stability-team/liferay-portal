@@ -7,6 +7,7 @@ package com.liferay.journal.util;
 
 import com.liferay.journal.model.JournalArticle;
 import com.liferay.journal.model.JournalArticleDisplay;
+import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.portlet.PortletRequestModel;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 
@@ -83,5 +84,8 @@ public interface JournalContent {
 	public JournalArticleDisplay getDisplay(
 		long groupId, String articleId, String viewMode, String languageId,
 		ThemeDisplay themeDisplay);
+
+	public String getGroupExternalReferenceCode(
+		long groupId, Layout layout, String portletId);
 
 }

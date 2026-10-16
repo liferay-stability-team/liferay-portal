@@ -11,17 +11,17 @@ import com.liferay.asset.kernel.model.AssetRenderer;
 import com.liferay.asset.kernel.model.AssetRendererFactory;
 import com.liferay.asset.kernel.service.AssetEntryLocalService;
 import com.liferay.journal.model.JournalArticle;
+import com.liferay.journal.util.JournalContent;
 import com.liferay.layout.model.LayoutClassedModelUsage;
 import com.liferay.layout.portlet.preferences.updater.PortletPreferencesUpdater;
 import com.liferay.layout.service.LayoutClassedModelUsageLocalService;
 import com.liferay.petra.string.StringPool;
-import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.model.Portlet;
-import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.ServiceContextThreadLocal;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.Portal;
+import com.liferay.portal.kernel.util.Validator;
 
 import jakarta.portlet.PortletPreferences;
 
@@ -60,14 +60,13 @@ public class JournalContentPortletPreferencesUpdater
 		portletPreferences.setValue(
 			"articleExternalReferenceCode", article.getExternalReferenceCode());
 
-		if (article.getGroupId() != themeDisplay.getScopeGroupId()) {
-			Group group = _groupLocalService.fetchGroup(article.getGroupId());
+		String groupExternalReferenceCode =
+			_journalContent.getGroupExternalReferenceCode(
+				article.getGroupId(), themeDisplay.getLayout(), portletId);
 
-			if (group != null) {
-				portletPreferences.setValue(
-					"groupExternalReferenceCode",
-					group.getExternalReferenceCode());
-			}
+		if (Validator.isNotNull(groupExternalReferenceCode)) {
+			portletPreferences.setValue(
+				"groupExternalReferenceCode", groupExternalReferenceCode);
 		}
 
 		_addLayoutClassedModelUsage(
@@ -100,7 +99,7 @@ public class JournalContentPortletPreferencesUpdater
 	private AssetEntryLocalService _assetEntryLocalService;
 
 	@Reference
-	private GroupLocalService _groupLocalService;
+	private JournalContent _journalContent;
 
 	@Reference
 	private LayoutClassedModelUsageLocalService

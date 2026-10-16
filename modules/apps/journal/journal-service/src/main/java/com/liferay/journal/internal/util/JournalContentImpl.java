@@ -27,16 +27,20 @@ import com.liferay.portal.kernel.content.security.policy.ContentSecurityPolicyNo
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.log.Log;
 import com.liferay.portal.kernel.log.LogFactoryUtil;
+import com.liferay.portal.kernel.model.Group;
+import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.model.LayoutSet;
 import com.liferay.portal.kernel.portlet.PortletRequestModel;
 import com.liferay.portal.kernel.security.permission.ActionKeys;
 import com.liferay.portal.kernel.security.permission.resource.ModelResourcePermission;
+import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.ServiceContextThreadLocal;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.MethodHandler;
 import com.liferay.portal.kernel.util.MethodKey;
+import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.StringUtil;
 import com.liferay.portal.kernel.util.Validator;
 import com.liferay.portal.kernel.workflow.WorkflowConstants;
@@ -410,6 +414,25 @@ public class JournalContentImpl implements JournalContent {
 			groupId, articleId, viewMode, languageId, 1, themeDisplay);
 	}
 
+	@Override
+	public String getGroupExternalReferenceCode(
+		long groupId, Layout layout, String portletId) {
+
+		if ((groupId <= 0) ||
+			(groupId == _portal.getScopeGroupId(layout, portletId))) {
+
+			return StringPool.BLANK;
+		}
+
+		Group group = _groupLocalService.fetchGroup(groupId);
+
+		if (group == null) {
+			return StringPool.BLANK;
+		}
+
+		return group.getExternalReferenceCode();
+	}
+
 	@Activate
 	protected void activate(BundleContext bundleContext) {
 		_portalCache =
@@ -573,6 +596,9 @@ public class JournalContentImpl implements JournalContent {
 		_portalCache;
 
 	@Reference
+	private GroupLocalService _groupLocalService;
+
+	@Reference
 	private JournalArticleLocalService _journalArticleLocalService;
 
 	@Reference(
@@ -583,6 +609,9 @@ public class JournalContentImpl implements JournalContent {
 
 	@Reference
 	private MultiVMPool _multiVMPool;
+
+	@Reference
+	private Portal _portal;
 
 	private ServiceRegistration<CTEventListener> _serviceRegistration;
 

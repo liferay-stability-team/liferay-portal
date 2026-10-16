@@ -14,6 +14,7 @@ import com.liferay.journal.constants.JournalPortletKeys;
 import com.liferay.journal.model.JournalArticle;
 import com.liferay.journal.service.JournalArticleLocalService;
 import com.liferay.journal.service.JournalArticleService;
+import com.liferay.journal.util.JournalContent;
 import com.liferay.journal.util.JournalConverter;
 import com.liferay.journal.util.JournalHelper;
 import com.liferay.journal.web.internal.asset.model.JournalArticleAssetRenderer;
@@ -24,6 +25,7 @@ import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.model.Group;
+import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.model.Portlet;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.portlet.PortletPreferencesFactoryUtil;
@@ -31,7 +33,6 @@ import com.liferay.portal.kernel.portlet.PortletURLFactoryUtil;
 import com.liferay.portal.kernel.portlet.bridges.mvc.BaseMVCActionCommand;
 import com.liferay.portal.kernel.portlet.bridges.mvc.MVCActionCommand;
 import com.liferay.portal.kernel.portlet.url.builder.PortletURLBuilder;
-import com.liferay.portal.kernel.service.GroupLocalService;
 import com.liferay.portal.kernel.service.LayoutLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.ServiceContextFactory;
@@ -130,25 +131,24 @@ public class UpdateArticleMVCActionCommand extends BaseMVCActionCommand {
 			AssetEntry assetEntry = _assetEntryLocalService.fetchEntry(
 				JournalArticle.class.getName(), article.getResourcePrimKey());
 
+			Layout layout = _layoutLocalService.getLayout(refererPlid);
+
 			PortletPreferences portletPreferences =
 				PortletPreferencesFactoryUtil.getStrictPortletSetup(
-					_layoutLocalService.getLayout(refererPlid),
-					portletResource);
+					layout, portletResource);
 
 			if (portletPreferences != null) {
-				ThemeDisplay themeDisplay =
-					(ThemeDisplay)actionRequest.getAttribute(
-						WebKeys.THEME_DISPLAY);
+				String groupExternalReferenceCode =
+					_journalContent.getGroupExternalReferenceCode(
+						article.getGroupId(), layout, portletResource);
 
-				if (article.getGroupId() != themeDisplay.getScopeGroupId()) {
-					Group group = _groupLocalService.fetchGroup(
-						article.getGroupId());
-
-					if (group != null) {
-						portletPreferences.setValue(
-							"groupExternalReferenceCode",
-							group.getExternalReferenceCode());
-					}
+				if (Validator.isNotNull(groupExternalReferenceCode)) {
+					portletPreferences.setValue(
+						"groupExternalReferenceCode",
+						groupExternalReferenceCode);
+				}
+				else {
+					portletPreferences.reset("groupExternalReferenceCode");
 				}
 
 				portletPreferences.setValue(
@@ -605,13 +605,13 @@ public class UpdateArticleMVCActionCommand extends BaseMVCActionCommand {
 	private FriendlyURLNormalizer _friendlyURLNormalizer;
 
 	@Reference
-	private GroupLocalService _groupLocalService;
-
-	@Reference
 	private JournalArticleLocalService _journalArticleLocalService;
 
 	@Reference
 	private JournalArticleService _journalArticleService;
+
+	@Reference
+	private JournalContent _journalContent;
 
 	@Reference
 	private JournalConverter _journalConverter;
