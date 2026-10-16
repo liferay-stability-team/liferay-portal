@@ -20,6 +20,7 @@ import com.liferay.document.library.kernel.processor.ImageProcessorUtil;
 import com.liferay.document.library.kernel.service.DLAppLocalService;
 import com.liferay.document.library.kernel.service.DLFileEntryLocalService;
 import com.liferay.document.library.kernel.store.Store;
+import com.liferay.document.library.kernel.store.StoreArea;
 import com.liferay.message.boards.constants.MBCategoryConstants;
 import com.liferay.message.boards.constants.MBMessageConstants;
 import com.liferay.message.boards.model.MBMessage;
@@ -489,11 +490,14 @@ public class DocumentLibraryConvertProcessTest {
 
 				Assert.assertNotEquals(
 					delete,
-					_fileSystemStore.hasFile(
-						dlFileEntry.getCompanyId(),
-						dlFileEntry.getDataRepositoryId(),
-						dlFileEntry.getName(),
-						dlFileVersion.getStoreFileName()));
+					StoreArea.tryGetWithStoreAreas(
+						() -> _fileSystemStore.hasFile(
+							dlFileEntry.getCompanyId(),
+							dlFileEntry.getDataRepositoryId(),
+							dlFileEntry.getName(),
+							dlFileVersion.getStoreFileName()),
+						Boolean.TRUE::equals, false, StoreArea.LIVE,
+						StoreArea.NEW));
 
 				_getContent(dlFileEntry, dlFileVersion.getStoreFileName());
 			}
