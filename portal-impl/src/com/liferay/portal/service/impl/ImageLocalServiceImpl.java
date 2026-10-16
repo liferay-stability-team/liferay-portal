@@ -5,7 +5,10 @@
 
 package com.liferay.portal.service.impl;
 
+import com.liferay.document.library.kernel.exception.NoSuchFileException;
 import com.liferay.document.library.kernel.store.Store;
+import com.liferay.document.library.kernel.store.StoreAreaAwareStoreWrapper;
+import com.liferay.document.library.kernel.store.StoreAreaProcessor;
 import com.liferay.document.library.kernel.util.DLValidatorUtil;
 import com.liferay.petra.io.unsync.UnsyncByteArrayInputStream;
 import com.liferay.petra.string.StringPool;
@@ -20,6 +23,7 @@ import com.liferay.portal.kernel.model.Image;
 import com.liferay.portal.kernel.module.service.Snapshot;
 import com.liferay.portal.kernel.util.GroupThreadLocal;
 import com.liferay.portal.kernel.util.MimeTypesUtil;
+import com.liferay.portal.kernel.util.PropsValues;
 import com.liferay.portal.kernel.webserver.WebServerServletTokenUtil;
 import com.liferay.portal.service.base.ImageLocalServiceBaseImpl;
 
@@ -51,9 +55,7 @@ public class ImageLocalServiceImpl extends ImageLocalServiceBaseImpl {
 
 		imagePersistence.remove(image);
 
-		Store store = _storeSnapshot.get();
-
-		store.deleteFile(
+		_wrappedStore.deleteFile(
 			image.getCompanyId(), _REPOSITORY_ID,
 			_getFileName(image.getImageId(), image.getType()),
 			Store.VERSION_DEFAULT);
@@ -77,14 +79,12 @@ public class ImageLocalServiceImpl extends ImageLocalServiceBaseImpl {
 			long companyId, long imageId, String type)
 		throws PortalException {
 
-		Store store = _storeSnapshot.get();
-
 		String fileName = _getFileName(imageId, type);
 
-		if (store.hasFile(
+		if (_wrappedStore.hasFile(
 				companyId, _REPOSITORY_ID, fileName, Store.VERSION_DEFAULT)) {
 
-			return store.getFileAsStream(
+			return _wrappedStore.getFileAsStream(
 				companyId, _REPOSITORY_ID, fileName, StringPool.BLANK);
 		}
 
@@ -92,8 +92,18 @@ public class ImageLocalServiceImpl extends ImageLocalServiceBaseImpl {
 			_log.debug("Get image " + imageId + " from the default company");
 		}
 
-		return store.getFileAsStream(
-			0, _REPOSITORY_ID, fileName, StringPool.BLANK);
+		try {
+			return _wrappedStore.getFileAsStream(
+				0, _REPOSITORY_ID, fileName, StringPool.BLANK);
+		}
+		catch (NoSuchFileException noSuchFileException) {
+			if (_log.isDebugEnabled()) {
+				_log.debug(noSuchFileException);
+			}
+
+			return _wrappedStore.getFileAsStream(
+				companyId, _REPOSITORY_ID, fileName, StringPool.BLANK);
+		}
 	}
 
 	@Override
@@ -176,19 +186,17 @@ public class ImageLocalServiceImpl extends ImageLocalServiceBaseImpl {
 			GroupThreadLocal.getGroupId(), fileName,
 			MimeTypesUtil.getContentType(fileName), bytes);
 
-		Store store = _storeSnapshot.get();
-
-		if (store.hasFile(
+		if (_wrappedStore.hasFile(
 				image.getCompanyId(), _REPOSITORY_ID, fileName,
 				Store.VERSION_DEFAULT)) {
 
-			store.deleteFile(
+			_wrappedStore.deleteFile(
 				image.getCompanyId(), _REPOSITORY_ID, fileName,
 				Store.VERSION_DEFAULT);
 		}
 
 		try (InputStream inputStream = new UnsyncByteArrayInputStream(bytes)) {
-			store.addFile(
+			_wrappedStore.addFile(
 				image.getCompanyId(), _REPOSITORY_ID, fileName,
 				Store.VERSION_DEFAULT, inputStream);
 		}
@@ -295,7 +303,13 @@ public class ImageLocalServiceImpl extends ImageLocalServiceBaseImpl {
 	private static final Log _log = LogFactoryUtil.getLog(
 		ImageLocalServiceImpl.class);
 
+	private static final Snapshot<StoreAreaProcessor>
+		_storeAreaProcessorSnapshot = new Snapshot<>(
+			ImageLocalServiceImpl.class, StoreAreaProcessor.class,
+			"(store.type=" + PropsValues.DL_STORE_IMPL + ")");
 	private static final Snapshot<Store> _storeSnapshot = new Snapshot<>(
 		ImageLocalServiceImpl.class, Store.class, "(default=true)");
+	private static final Store _wrappedStore = new StoreAreaAwareStoreWrapper(
+		_storeSnapshot::get, _storeAreaProcessorSnapshot::get);
 
 }
