@@ -8,7 +8,11 @@
 <%@ include file="/admin/init.jsp" %>
 
 <%
+BulkSelectionRunner bulkSelectionRunner = BulkSelectionRunnerUtil.getBulkSelectionRunner();
+
 DDMFormViewFormInstanceRecordsDisplayContext ddmFormViewFormInstanceRecordsDisplayContext = ddmFormAdminDisplayContext.getDDMFormViewFormInstanceRecordsDisplayContext();
+
+DDMFormInstance ddmFormInstance = ddmFormViewFormInstanceRecordsDisplayContext.getDDMFormInstance();
 
 PortletURL portletURL = ddmFormViewFormInstanceRecordsDisplayContext.getPortletURL();
 %>
@@ -18,14 +22,25 @@ PortletURL portletURL = ddmFormViewFormInstanceRecordsDisplayContext.getPortletU
 	<portlet:param name="redirect" value="<%= currentURL %>" />
 </portlet:actionURL>
 
+<div>
+	<react:component
+		module="{BulkStatus} from dynamic-data-mapping-form-web"
+		props='<%=
+			HashMapBuilder.<String, Object>put(
+				"bulkInProgress", bulkSelectionRunner.isBusy(user)
+			).put(
+				"deletionStarted", SessionMessages.contains(renderRequest, "deleteAllFormInstanceRecords")
+			).put(
+				"pathModule", PortalUtil.getPathModule()
+			).build()
+		%>'
+	/>
+</div>
+
 <clay:management-toolbar
 	actionDropdownItems="<%= ddmFormViewFormInstanceRecordsDisplayContext.getActionItemsDropdownItems() %>"
 	additionalProps='<%=
 		HashMapBuilder.<String, Object>put(
-			"allSelectedLocalizedMessage", ddmFormViewFormInstanceRecordsDisplayContext.getLocalizedMessage(themeDisplay.getLocale(), "all-selected")
-		).put(
-			"ddmFormInstanceRecordIds", ddmFormViewFormInstanceRecordsDisplayContext.getDDMFormInstanceRecordIds()
-		).put(
 			"deleteFormInstanceRecordURL", deleteFormInstanceRecordURL.toString()
 		).build()
 	%>'
@@ -41,7 +56,7 @@ PortletURL portletURL = ddmFormViewFormInstanceRecordsDisplayContext.getPortletU
 	sortingURL="<%= ddmFormViewFormInstanceRecordsDisplayContext.getSortingURL() %>"
 />
 
-<c:if test="<%= DDMFormInstanceExpirationStatusUtil.isFormExpired(ddmFormViewFormInstanceRecordsDisplayContext.getDDMFormInstance(), timeZone) %>">
+<c:if test="<%= DDMFormInstanceExpirationStatusUtil.isFormExpired(ddmFormInstance, timeZone) %>">
 	<clay:stripe
 		dismissible="<%= true %>"
 		displayType="warning"
@@ -59,6 +74,8 @@ PortletURL portletURL = ddmFormViewFormInstanceRecordsDisplayContext.getPortletU
 >
 	<aui:form action="<%= portletURL %>" method="post" name="searchContainerForm">
 		<aui:input name="deleteFormInstanceRecordIds" type="hidden" />
+		<aui:input name="formInstanceId" type="hidden" value="<%= ddmFormInstance.getFormInstanceId() %>" />
+		<aui:input name="selectAll" type="hidden" />
 
 		<liferay-ui:search-container
 			id="<%= ddmFormViewFormInstanceRecordsDisplayContext.getSearchContainerId() %>"
