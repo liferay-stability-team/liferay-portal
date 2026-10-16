@@ -410,7 +410,7 @@ public class DDMFormAdminFieldSetDisplayContext
 			dropdownItem.setHref(
 				renderResponse.createRenderURL(), "mvcRenderCommandName",
 				"/admin/edit_element_set", "redirect",
-				PortalUtil.getCurrentURL(httpServletRequest), "groupId",
+				getPortletURL().toString(), "groupId",
 				String.valueOf(themeDisplay.getScopeGroupId()));
 
 			dropdownItem.setLabel(

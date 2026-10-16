@@ -31,6 +31,10 @@ renderResponse.setTitle((ddmDataProviderInstance == null) ? LanguageUtil.get(req
 	<portlet:param name="mvcPath" value="/edit_data_provider.jsp" />
 </portlet:actionURL>
 
+<portlet:renderURL var="viewDataProviderURL">
+	<portlet:param name="mvcPath" value="/view.jsp" />
+</portlet:renderURL>
+
 <aui:form action="<%= (ddmDataProviderInstance == null) ? addDataProviderURL : updateDataProviderURL %>" data-senna-off="true" method="post" name="fm">
 	<aui:input name="redirect" type="hidden" value="<%= redirect %>" />
 	<aui:input name="groupId" type="hidden" value="<%= String.valueOf(groupId) %>" />
@@ -83,7 +87,7 @@ renderResponse.setTitle((ddmDataProviderInstance == null) ? LanguageUtil.get(req
 					<div class="sheet-footer">
 						<aui:button id="submit" label="save" type="submit" />
 
-						<aui:button href="<%= redirect %>" name="cancelButton" type="cancel" />
+						<aui:button href="<%= viewDataProviderURL %>" name="cancelButton" type="cancel" />
 					</div>
 				</c:if>
 			</div>
@@ -92,10 +96,6 @@ renderResponse.setTitle((ddmDataProviderInstance == null) ? LanguageUtil.get(req
 
 	<aui:button cssClass="hide" type="submit" />
 </aui:form>
-
-<portlet:renderURL var="viewDataProviderURL">
-	<portlet:param name="mvcPath" value="/view.jsp" />
-</portlet:renderURL>
 
 <c:if test="<%= windowState.equals(LiferayWindowState.POP_UP) %>">
 	<aui:script>

@@ -21,17 +21,13 @@ import com.liferay.dynamic.data.mapping.storage.StorageType;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.json.JSONFactory;
 import com.liferay.portal.kernel.json.JSONObject;
-import com.liferay.portal.kernel.portlet.LiferayPortletURL;
-import com.liferay.portal.kernel.portlet.PortletURLFactoryUtil;
 import com.liferay.portal.kernel.portlet.bridges.mvc.BaseMVCActionCommand;
 import com.liferay.portal.kernel.portlet.bridges.mvc.MVCActionCommand;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.service.ServiceContextFactory;
-import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.Portal;
-import com.liferay.portal.kernel.util.WebKeys;
 
 import jakarta.portlet.ActionRequest;
 import jakarta.portlet.ActionResponse;
@@ -62,9 +58,6 @@ public class SaveStructureMVCActionCommand extends BaseMVCActionCommand {
 			ActionRequest actionRequest, ActionResponse actionResponse)
 		throws Exception {
 
-		ThemeDisplay themeDisplay = (ThemeDisplay)actionRequest.getAttribute(
-			WebKeys.THEME_DISPLAY);
-
 		ServiceContext serviceContext = ServiceContextFactory.getInstance(
 			DDMStructure.class.getName(), actionRequest);
 
@@ -83,10 +76,8 @@ public class SaveStructureMVCActionCommand extends BaseMVCActionCommand {
 			description, ddmForm.getAvailableLocales(),
 			ddmForm.getDefaultLocale());
 
-		DDMStructure ddmStructure = null;
-
 		if (structureId == 0) {
-			ddmStructure = _ddmStructureService.addStructure(
+			_ddmStructureService.addStructure(
 				groupId, DDMStructureConstants.DEFAULT_PARENT_STRUCTURE_ID,
 				_portal.getClassNameId(DDMFormInstance.class), structureKey,
 				nameMap, descriptionMap, ddmForm, ddmFormLayout,
@@ -94,28 +85,12 @@ public class SaveStructureMVCActionCommand extends BaseMVCActionCommand {
 				DDMStructureConstants.TYPE_FRAGMENT, serviceContext);
 		}
 		else {
-			ddmStructure = _ddmStructureService.updateStructure(
+			_ddmStructureService.updateStructure(
 				groupId, DDMStructureConstants.DEFAULT_PARENT_STRUCTURE_ID,
 				_portal.getClassNameId(DDMFormInstance.class), structureKey,
 				nameMap, descriptionMap, ddmForm, ddmFormLayout,
 				serviceContext);
 		}
-
-		LiferayPortletURL portletURL = PortletURLFactoryUtil.create(
-			actionRequest, themeDisplay.getPpid(), PortletRequest.RENDER_PHASE);
-
-		String mvcRenderCommandName = ParamUtil.getString(
-			actionRequest, "mvcRenderCommandName");
-
-		portletURL.setParameter("mvcRenderCommandName", mvcRenderCommandName);
-
-		String redirect = ParamUtil.getString(actionRequest, "redirect");
-
-		portletURL.setParameter(
-			"structureId", String.valueOf(ddmStructure.getStructureId()));
-		portletURL.setParameter("redirect", redirect);
-
-		actionRequest.setAttribute(WebKeys.REDIRECT, portletURL.toString());
 	}
 
 	protected DDMForm getDDMForm(PortletRequest portletRequest)
