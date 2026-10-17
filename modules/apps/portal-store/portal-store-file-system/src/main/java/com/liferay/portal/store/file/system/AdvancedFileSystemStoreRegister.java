@@ -6,6 +6,7 @@
 package com.liferay.portal.store.file.system;
 
 import com.liferay.document.library.kernel.store.Store;
+import com.liferay.document.library.kernel.store.StoreAreaProcessor;
 import com.liferay.portal.configuration.metatype.bnd.util.ConfigurableUtil;
 import com.liferay.portal.convert.documentlibrary.FileSystemStoreRootDirException;
 import com.liferay.portal.kernel.util.GetterUtil;
@@ -52,18 +53,38 @@ public class AdvancedFileSystemStoreRegister {
 		AdvancedFileSystemStore advancedFileSystemStore =
 			new AdvancedFileSystemStore(advancedFileSystemStoreConfiguration);
 
-		_serviceRegistration = bundleContext.registerService(
-			Store.class, _wrapStore(advancedFileSystemStore),
+		Store store = _wrapStore(advancedFileSystemStore);
+
+		_storeServiceRegistration = bundleContext.registerService(
+			Store.class, store,
 			HashMapDictionaryBuilder.<String, Object>put(
 				"rootDir", advancedFileSystemStore.getRootDir()
 			).put(
+				"store.type", AdvancedFileSystemStore.class.getName()
+			).build());
+
+		if (GetterUtil.getBoolean(
+				PropsUtil.get("dl.store.file.system.lenient"))) {
+
+			return;
+		}
+
+		_storeAreaProcessorServiceRegistration = bundleContext.registerService(
+			StoreAreaProcessor.class,
+			new FileSystemStoreAreaProcessor(
+				advancedFileSystemStore.getRootDir(), store),
+			HashMapDictionaryBuilder.<String, Object>put(
 				"store.type", AdvancedFileSystemStore.class.getName()
 			).build());
 	}
 
 	@Deactivate
 	protected void deactivate() {
-		_serviceRegistration.unregister();
+		if (_storeAreaProcessorServiceRegistration != null) {
+			_storeAreaProcessorServiceRegistration.unregister();
+		}
+
+		_storeServiceRegistration.unregister();
 	}
 
 	private Store _wrapStore(Store store) {
@@ -76,6 +97,8 @@ public class AdvancedFileSystemStoreRegister {
 		return new LenientStore(new SafeFileNameStore(store));
 	}
 
-	private ServiceRegistration<Store> _serviceRegistration;
+	private ServiceRegistration<StoreAreaProcessor>
+		_storeAreaProcessorServiceRegistration;
+	private ServiceRegistration<Store> _storeServiceRegistration;
 
 }

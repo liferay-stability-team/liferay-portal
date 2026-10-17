@@ -6,20 +6,39 @@
 package com.liferay.document.library.store.test;
 
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
+import com.liferay.counter.kernel.service.CounterLocalServiceUtil;
+import com.liferay.document.library.kernel.model.DLFileEntry;
+import com.liferay.document.library.kernel.model.DLFileVersion;
+import com.liferay.document.library.kernel.service.DLAppLocalServiceUtil;
 import com.liferay.document.library.kernel.store.DLStoreRequest;
 import com.liferay.document.library.kernel.store.DLStoreUtil;
 import com.liferay.document.library.kernel.store.Store;
 import com.liferay.document.library.kernel.store.StoreArea;
+import com.liferay.document.library.test.util.DLAppTestUtil;
+import com.liferay.petra.function.UnsafeConsumer;
+import com.liferay.petra.io.unsync.UnsyncByteArrayInputStream;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
+import com.liferay.portal.configuration.test.util.ConfigurationTemporarySwapper;
 import com.liferay.portal.kernel.model.Company;
+import com.liferay.portal.kernel.model.Image;
+import com.liferay.portal.kernel.module.service.Snapshot;
+import com.liferay.portal.kernel.repository.model.FileEntry;
+import com.liferay.portal.kernel.repository.model.FileVersion;
+import com.liferay.portal.kernel.scheduler.SchedulerJobConfiguration;
 import com.liferay.portal.kernel.service.CompanyLocalService;
+import com.liferay.portal.kernel.service.ImageLocalServiceUtil;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.AssumeTestRule;
+import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
+import com.liferay.portal.kernel.util.ArrayUtil;
+import com.liferay.portal.kernel.util.FileUtil;
+import com.liferay.portal.kernel.util.HashMapDictionaryBuilder;
 import com.liferay.portal.kernel.util.PropsKeys;
 import com.liferay.portal.kernel.util.PropsUtil;
 import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.portal.kernel.uuid.PortalUUIDUtil;
 import com.liferay.portal.test.rule.FeatureFlag;
 import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
@@ -45,14 +64,13 @@ public class DLStoreStoreAreaTest {
 			new AssumeTestRule("assume"), new LiferayIntegrationTestRule());
 
 	public static void assume() {
-		String gcsStoreClassName = "com.liferay.portal.store.gcs.GCSStore";
 		String dlStoreImpl = PropsUtil.get(PropsKeys.DL_STORE_IMPL);
 
 		Assume.assumeTrue(
 			StringBundler.concat(
-				"Property \"", PropsKeys.DL_STORE_IMPL, "\" is not set to \"",
-				gcsStoreClassName, "\""),
-			dlStoreImpl.equals(gcsStoreClassName));
+				"Property \"", PropsKeys.DL_STORE_IMPL,
+				"\" is not set to a store that supports store areas"),
+			ArrayUtil.contains(_STORE_CLASS_NAMES, dlStoreImpl));
 	}
 
 	@Test
@@ -69,6 +87,139 @@ public class DLStoreStoreAreaTest {
 		StoreArea.withStoreArea(
 			StoreArea.NEW,
 			() -> _assertHasStoreFile(fileName, Store.VERSION_DEFAULT));
+	}
+
+	@Test
+	public void testCleanUpStoreAreas() throws Exception {
+		FileEntry deletedFileEntry = DLAppTestUtil.addFileEntry(
+			TestPropsValues.getGroupId());
+
+		byte[] deletedFileEntryBytes = FileUtil.getBytes(
+			deletedFileEntry.getContentStream());
+
+		DLFileEntry deletedDLFileEntry =
+			(DLFileEntry)deletedFileEntry.getModel();
+
+		DLStoreUtil.deleteFile(
+			deletedDLFileEntry.getCompanyId(),
+			deletedDLFileEntry.getDataRepositoryId(),
+			deletedDLFileEntry.getName());
+
+		long deletedImageId = CounterLocalServiceUtil.increment();
+		byte[] bytes = RandomTestUtil.randomBytes();
+
+		Image deletedImage = ImageLocalServiceUtil.updateImage(
+			TestPropsValues.getCompanyId(), deletedImageId, bytes, "png", 1, 1,
+			bytes.length);
+
+		ImageLocalServiceUtil.deleteImage(deletedImageId);
+		ImageLocalServiceUtil.addImage(deletedImage);
+
+		FileEntry newFileEntry = DLAppTestUtil.addFileEntry(
+			TestPropsValues.getGroupId());
+
+		byte[] newFileEntryBytes = FileUtil.getBytes(
+			newFileEntry.getContentStream());
+
+		String unreferencedDeletedFileName = StringUtil.randomString();
+		String unreferencedDeletedImageFileName =
+			CounterLocalServiceUtil.increment() + ".png";
+		String unreferencedNewFileName = StringUtil.randomString();
+		String unreferencedVersionLabel = "1.0~" + PortalUUIDUtil.generate();
+
+		StoreArea.withStoreArea(
+			StoreArea.DELETED,
+			() -> {
+				_store.addFile(
+					TestPropsValues.getCompanyId(),
+					TestPropsValues.getGroupId(), unreferencedDeletedFileName,
+					unreferencedVersionLabel,
+					new UnsyncByteArrayInputStream(new byte[0]));
+				_store.addFile(
+					TestPropsValues.getCompanyId(), 0,
+					unreferencedDeletedImageFileName, Store.VERSION_DEFAULT,
+					new UnsyncByteArrayInputStream(new byte[0]));
+			});
+
+		StoreArea.withStoreArea(
+			StoreArea.NEW,
+			() -> _store.addFile(
+				TestPropsValues.getCompanyId(), TestPropsValues.getGroupId(),
+				unreferencedNewFileName, unreferencedVersionLabel,
+				new UnsyncByteArrayInputStream(new byte[0])));
+
+		try (ConfigurationTemporarySwapper configurationTemporarySwapper =
+				new ConfigurationTemporarySwapper(
+					"com.liferay.document.library.internal.configuration." +
+						"StoreAreaConfiguration",
+					HashMapDictionaryBuilder.<String, Object>put(
+						"evictionAge", -1
+					).put(
+						"evictionQuota", 100000
+					).build())) {
+
+			SchedulerJobConfiguration schedulerJobConfiguration =
+				_schedulerJobConfigurationSnapshot.get();
+
+			UnsafeConsumer<Long, Exception> unsafeConsumer =
+				schedulerJobConfiguration.getCompanyJobExecutorUnsafeConsumer();
+
+			unsafeConsumer.accept(TestPropsValues.getCompanyId());
+		}
+
+		Assert.assertArrayEquals(
+			deletedFileEntryBytes,
+			FileUtil.getBytes(deletedFileEntry.getContentStream()));
+		Assert.assertArrayEquals(
+			bytes,
+			FileUtil.getBytes(
+				ImageLocalServiceUtil.getImageInputStream(
+					TestPropsValues.getCompanyId(), deletedImageId, "png")));
+
+		FileEntry movedFileEntry = DLAppLocalServiceUtil.getFileEntry(
+			newFileEntry.getFileEntryId());
+
+		Assert.assertArrayEquals(
+			newFileEntryBytes,
+			FileUtil.getBytes(movedFileEntry.getContentStream()));
+
+		DLFileEntry newDLFileEntry = (DLFileEntry)newFileEntry.getModel();
+
+		FileVersion newFileVersion = newFileEntry.getFileVersion();
+
+		DLFileVersion newDLFileVersion =
+			(DLFileVersion)newFileVersion.getModel();
+
+		Assert.assertTrue(
+			StoreArea.withStoreArea(
+				StoreArea.LIVE,
+				() -> _store.hasFile(
+					newDLFileEntry.getCompanyId(),
+					newDLFileEntry.getDataRepositoryId(),
+					newDLFileEntry.getName(),
+					newDLFileVersion.getStoreFileName())));
+
+		StoreArea.withStoreArea(
+			StoreArea.DELETED,
+			() -> {
+				Assert.assertFalse(
+					_store.hasFile(
+						TestPropsValues.getCompanyId(),
+						TestPropsValues.getGroupId(),
+						unreferencedDeletedFileName, unreferencedVersionLabel));
+				Assert.assertFalse(
+					_store.hasFile(
+						TestPropsValues.getCompanyId(), 0,
+						unreferencedDeletedImageFileName,
+						Store.VERSION_DEFAULT));
+				Assert.assertTrue(
+					_store.hasFile(
+						TestPropsValues.getCompanyId(),
+						TestPropsValues.getGroupId(), unreferencedNewFileName,
+						unreferencedVersionLabel));
+			});
+
+		ImageLocalServiceUtil.deleteImage(deletedImageId);
 	}
 
 	@Test
@@ -137,6 +288,50 @@ public class DLStoreStoreAreaTest {
 				_assertHasStoreFile(fileName, Store.VERSION_DEFAULT);
 				_assertHasStoreFile(fileName, "2.0");
 			});
+	}
+
+	@Test
+	public void testGetFileEntryContentStreamWhenStoreFileIsDeleted()
+		throws Exception {
+
+		FileEntry fileEntry = DLAppTestUtil.addFileEntry(
+			TestPropsValues.getGroupId());
+
+		byte[] bytes = FileUtil.getBytes(fileEntry.getContentStream());
+
+		DLFileEntry dlFileEntry = (DLFileEntry)fileEntry.getModel();
+
+		FileVersion fileVersion = fileEntry.getFileVersion();
+
+		DLFileVersion dlFileVersion = (DLFileVersion)fileVersion.getModel();
+
+		DLStoreUtil.deleteFile(
+			dlFileEntry.getCompanyId(), dlFileEntry.getDataRepositoryId(),
+			dlFileEntry.getName(), dlFileVersion.getStoreFileName());
+
+		Assert.assertArrayEquals(
+			bytes, FileUtil.getBytes(fileEntry.getContentStream()));
+	}
+
+	@Test
+	public void testGetImageInputStreamWhenImageIsRestored() throws Exception {
+		long imageId = CounterLocalServiceUtil.increment();
+		byte[] bytes = RandomTestUtil.randomBytes();
+
+		Image image = ImageLocalServiceUtil.updateImage(
+			TestPropsValues.getCompanyId(), imageId, bytes, "png", 1, 1,
+			bytes.length);
+
+		ImageLocalServiceUtil.deleteImage(imageId);
+		ImageLocalServiceUtil.addImage(image);
+
+		Assert.assertArrayEquals(
+			bytes,
+			FileUtil.getBytes(
+				ImageLocalServiceUtil.getImageInputStream(
+					TestPropsValues.getCompanyId(), imageId, "png")));
+
+		ImageLocalServiceUtil.deleteImage(imageId);
 	}
 
 	@Test
@@ -214,13 +409,23 @@ public class DLStoreStoreAreaTest {
 				fileName, version));
 	}
 
+	private static final String[] _STORE_CLASS_NAMES = {
+		"com.liferay.portal.store.file.system.AdvancedFileSystemStore",
+		"com.liferay.portal.store.file.system.FileSystemStore",
+		"com.liferay.portal.store.gcs.GCSStore"
+	};
+
+	private static final Snapshot<SchedulerJobConfiguration>
+		_schedulerJobConfigurationSnapshot = new Snapshot<>(
+			DLStoreStoreAreaTest.class, SchedulerJobConfiguration.class,
+			"(component.name=com.liferay.document.library.internal." +
+				"CleanUpStoreAreasSchedulerJobConfiguration)",
+			true);
+
 	@Inject
 	private CompanyLocalService _companyLocalService;
 
-	@Inject(
-		filter = "store.type=com.liferay.portal.store.gcs.GCSStore",
-		type = Store.class
-	)
+	@Inject(filter = "default=true", type = Store.class)
 	private Store _store;
 
 }

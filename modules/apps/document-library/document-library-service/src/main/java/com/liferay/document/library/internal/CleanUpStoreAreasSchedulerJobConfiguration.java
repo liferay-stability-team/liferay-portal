@@ -7,20 +7,31 @@ package com.liferay.document.library.internal;
 
 import com.liferay.document.library.internal.configuration.StoreAreaConfiguration;
 import com.liferay.document.library.kernel.service.DLFileVersionLocalService;
+import com.liferay.document.library.kernel.store.StoreArea;
 import com.liferay.document.library.kernel.store.StoreAreaProcessor;
 import com.liferay.petra.function.UnsafeConsumer;
 import com.liferay.petra.function.UnsafeRunnable;
+import com.liferay.petra.string.CharPool;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.configuration.metatype.bnd.util.ConfigurableUtil;
+import com.liferay.portal.kernel.model.Image;
 import com.liferay.portal.kernel.module.service.Snapshot;
 import com.liferay.portal.kernel.scheduler.SchedulerJobConfiguration;
 import com.liferay.portal.kernel.scheduler.TimeUnit;
 import com.liferay.portal.kernel.scheduler.TriggerConfiguration;
 import com.liferay.portal.kernel.service.CompanyLocalService;
+import com.liferay.portal.kernel.service.ImageLocalService;
+import com.liferay.portal.kernel.util.FileUtil;
+import com.liferay.portal.kernel.util.GetterUtil;
+import com.liferay.portal.kernel.util.PropsKeys;
+import com.liferay.portal.kernel.util.PropsUtil;
+import com.liferay.portal.kernel.util.StringUtil;
+import com.liferay.portal.kernel.util.Validator;
 
 import java.time.Duration;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.osgi.service.component.annotations.Activate;
@@ -78,7 +89,7 @@ public class CleanUpStoreAreasSchedulerJobConfiguration
 			companyId,
 			storeAreaProcessor.cleanUpDeletedStoreArea(
 				companyId, _storeAreaConfiguration.evictionQuota(),
-				name -> !_isDLFileVersionReferenced(companyId, name),
+				name -> !_isReferenced(companyId, name),
 				_startOffsets.getOrDefault(companyId, StringPool.BLANK),
 				Duration.ofDays(_storeAreaConfiguration.evictionAge())));
 
@@ -86,12 +97,39 @@ public class CleanUpStoreAreasSchedulerJobConfiguration
 			companyId,
 			storeAreaProcessor.cleanUpNewStoreArea(
 				companyId, _storeAreaConfiguration.evictionQuota(),
-				name -> !_isDLFileVersionReferenced(companyId, name),
+				name -> !_isReferenced(companyId, name),
 				_startOffsets.getOrDefault(companyId, StringPool.BLANK),
 				Duration.ofDays(_storeAreaConfiguration.evictionAge())));
 	}
 
-	private boolean _isDLFileVersionReferenced(Long companyId, String name) {
+	private boolean _isReferenced(Long companyId, String name) {
+		for (StoreArea storeArea : StoreArea.values()) {
+			String path = storeArea.getPath();
+
+			if (Validator.isNotNull(path) && name.startsWith(path)) {
+				name = name.substring(path.length());
+
+				break;
+			}
+		}
+
+		String[] parts = StringUtil.split(name, CharPool.SLASH);
+
+		if ((parts.length == 4) && Objects.equals(parts[1], "0")) {
+			long imageId = GetterUtil.getLong(
+				FileUtil.stripExtension(parts[parts.length - 2]));
+
+			if (imageId > 0) {
+				Image image = _imageLocalService.fetchImage(imageId);
+
+				if (image != null) {
+					return true;
+				}
+
+				return false;
+			}
+		}
+
 		int pos = name.lastIndexOf(StringPool.TILDE);
 
 		if (pos == -1) {
@@ -111,13 +149,18 @@ public class CleanUpStoreAreasSchedulerJobConfiguration
 	private static final Snapshot<StoreAreaProcessor>
 		_storeAreaProcessorSnapshot = new Snapshot<>(
 			CleanUpStoreAreasSchedulerJobConfiguration.class,
-			StoreAreaProcessor.class, "(default=true)", true);
+			StoreAreaProcessor.class,
+			"(store.type=" + PropsUtil.get(PropsKeys.DL_STORE_IMPL) + ")",
+			true);
 
 	@Reference
 	private CompanyLocalService _companyLocalService;
 
 	@Reference
 	private DLFileVersionLocalService _dlFileVersionLocalService;
+
+	@Reference
+	private ImageLocalService _imageLocalService;
 
 	private Map<Long, String> _startOffsets;
 	private StoreAreaConfiguration _storeAreaConfiguration;
