@@ -108,6 +108,13 @@ export class FormsPage {
 		);
 	}
 
+	async goToElementSets(siteUrl?: Site['friendlyUrlPath']) {
+		await this.page.goto(
+			`/group${siteUrl || '/guest'}${PORTLET_URLS.forms}&_com_liferay_dynamic_data_mapping_form_web_portlet_DDMFormAdminPortlet_currentTab=element-set`,
+			{waitUntil: 'networkidle'}
+		);
+	}
+
 	async importForm(folderPath: string) {
 		await this.openExportImporFormModal();
 
