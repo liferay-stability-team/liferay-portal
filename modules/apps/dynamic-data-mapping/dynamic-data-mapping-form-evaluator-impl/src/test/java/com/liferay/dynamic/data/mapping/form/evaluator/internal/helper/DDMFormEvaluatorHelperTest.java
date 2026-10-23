@@ -818,6 +818,36 @@ public class DDMFormEvaluatorHelperTest {
 	}
 
 	@Test
+	public void testRequiredValidationWithReadOnlyField() throws Exception {
+		DDMForm ddmForm = new DDMForm();
+
+		DDMFormField ddmFormField = _createDDMFormField(
+			"field0", "text", FieldConstants.STRING);
+
+		ddmFormField.setReadOnly(true);
+		ddmFormField.setRequired(true);
+
+		ddmForm.addDDMFormField(ddmFormField);
+
+		DDMFormValues ddmFormValues = DDMFormValuesTestUtil.createDDMFormValues(
+			ddmForm);
+
+		ddmFormValues.addDDMFormFieldValue(
+			DDMFormValuesTestUtil.createDDMFormFieldValue(
+				"field0_instanceId", "field0", new UnlocalizedValue("")));
+
+		DDMFormEvaluatorEvaluateResponse ddmFormEvaluatorEvaluateResponse =
+			evaluate(ddmForm, ddmFormValues);
+
+		Map<DDMFormEvaluatorFieldContextKey, Map<String, Object>>
+			ddmFormFieldsPropertyChanges =
+				ddmFormEvaluatorEvaluateResponse.
+					getDDMFormFieldsPropertyChanges();
+
+		Assert.assertTrue(ddmFormFieldsPropertyChanges.isEmpty());
+	}
+
+	@Test
 	public void testRequiredValidationWithTextField() throws Exception {
 		DDMForm ddmForm = new DDMForm();
 

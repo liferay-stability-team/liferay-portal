@@ -407,6 +407,24 @@ public class DDMFormValuesValidatorTest {
 		_ddmFormValuesValidatorImpl.validate(ddmFormValues);
 	}
 
+	@Test
+	public void testValidationWithMissingReadOnlyRequiredField()
+		throws Exception {
+
+		DDMForm ddmForm = DDMFormTestUtil.createDDMForm();
+
+		DDMFormField ddmFormField =
+			DDMFormTestUtil.createLocalizableTextDDMFormField("name");
+
+		ddmFormField.setReadOnly(true);
+		ddmFormField.setRequired(true);
+
+		DDMFormTestUtil.addDDMFormFields(ddmForm, ddmFormField);
+
+		_ddmFormValuesValidatorImpl.validate(
+			DDMFormValuesTestUtil.createDDMFormValues(ddmForm));
+	}
+
 	@Test(expected = RequiredValue.class)
 	public void testValidationWithMissingRequiredField() throws Exception {
 		DDMForm ddmForm = DDMFormTestUtil.createDDMForm();
@@ -552,6 +570,35 @@ public class DDMFormValuesValidatorTest {
 		ddmFormValues.addDDMFormFieldValue(
 			DDMFormValuesTestUtil.createDDMFormFieldValue(
 				instanceId, "option", new UnlocalizedValue("[\"\"]")));
+
+		_ddmFormValuesValidatorImpl.validate(ddmFormValues);
+	}
+
+	@Test
+	public void testValidationWithReadOnlyRequiredFieldAndEmptyDefaultLocaleValue()
+		throws Exception {
+
+		DDMForm ddmForm = DDMFormTestUtil.createDDMForm(
+			DDMFormTestUtil.createAvailableLocales(LocaleUtil.US),
+			LocaleUtil.US);
+
+		DDMFormField ddmFormField = DDMFormTestUtil.createTextDDMFormField(
+			"name", "Name", true, false, true);
+
+		ddmFormField.setReadOnly(true);
+
+		DDMFormTestUtil.addDDMFormFields(ddmForm, ddmFormField);
+
+		DDMFormValues ddmFormValues = DDMFormValuesTestUtil.createDDMFormValues(
+			ddmForm);
+
+		LocalizedValue localizedValue = new LocalizedValue(LocaleUtil.US);
+
+		localizedValue.addString(LocaleUtil.US, StringPool.BLANK);
+
+		ddmFormValues.addDDMFormFieldValue(
+			DDMFormValuesTestUtil.createDDMFormFieldValue(
+				StringUtil.randomString(), "name", localizedValue));
 
 		_ddmFormValuesValidatorImpl.validate(ddmFormValues);
 	}

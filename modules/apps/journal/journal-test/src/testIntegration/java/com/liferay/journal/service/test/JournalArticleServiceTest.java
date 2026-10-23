@@ -167,6 +167,18 @@ public class JournalArticleServiceTest {
 		_testAddArticleDefaultValuesWithoutUpdatePermission();
 	}
 
+	@Test
+	public void testAddArticleWithEmptyReadOnlyRequiredTextField()
+		throws Exception {
+
+		testAddArticleRequiredFields(
+			"test-ddm-structure-text-read-only-required-field.xml",
+			"test-journal-content-text-empty-required-field.xml",
+			HashMapBuilder.put(
+				"Text2030", ""
+			).build());
+	}
+
 	@Test(expected = StorageFieldRequiredException.class)
 	public void testAddArticleWithEmptyRequiredHTMLField() throws Exception {
 		testAddArticleRequiredFields(
