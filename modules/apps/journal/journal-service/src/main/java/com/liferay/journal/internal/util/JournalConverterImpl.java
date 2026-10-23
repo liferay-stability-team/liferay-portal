@@ -708,10 +708,14 @@ public class JournalConverterImpl implements JournalConverter {
 				}
 			}
 			else {
+				String optionValue = jsonArray.getString(0);
+
+				dynamicContentElement.addCDATA(optionValue);
+
 				Element optionElement = dynamicContentElement.addElement(
 					"option");
 
-				optionElement.addCDATA(jsonArray.getString(0));
+				optionElement.addCDATA(optionValue);
 
 				Element optionReferenceElement =
 					dynamicContentElement.addElement("option-reference");
@@ -720,8 +724,7 @@ public class JournalConverterImpl implements JournalConverter {
 					ddmFormField.getDDMFormFieldOptions();
 
 				optionReferenceElement.addCDATA(
-					ddmFormFieldOptions.getOptionReference(
-						jsonArray.getString(0)));
+					ddmFormFieldOptions.getOptionReference(optionValue));
 			}
 		}
 		else {

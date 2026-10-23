@@ -251,6 +251,42 @@ public class JournalConverterImplTest {
 		_assertDynamicContentElement(dynamicContentElement, null);
 	}
 
+	@Test
+	@TestInfo("LPD-110309")
+	public void testUpdateContentDynamicElementWithSingleSelectValue()
+		throws Exception {
+
+		JournalConverterImpl journalConverterImpl = new JournalConverterImpl();
+
+		ReflectionTestUtil.setFieldValue(
+			journalConverterImpl, "_jsonFactory", new JSONFactoryImpl());
+
+		List<String> optionReferences = new ArrayList<>();
+		Element rootElement = _createRootElement();
+
+		String optionValue = _updateContentDynamicElement(
+			"field_0", "select", journalConverterImpl, false, optionReferences,
+			rootElement);
+
+		Document document = rootElement.getDocument();
+
+		document = SAXReaderUtil.read(document.formattedString());
+
+		rootElement = document.getRootElement();
+
+		Element dynamicContentElement = rootElement.element("dynamic-content");
+
+		Element optionElement = dynamicContentElement.element("option");
+
+		Assert.assertEquals(optionValue, dynamicContentElement.getTextTrim());
+
+		Assert.assertEquals(optionValue, optionElement.getText());
+
+		_assertDynamicContentElement(
+			dynamicContentElement,
+			Collections.singletonList(optionReferences.get(0)));
+	}
+
 	private void _assertDynamicContentElement(
 		Element dynamicContentElement, List<String> expectedReferences) {
 
@@ -444,7 +480,7 @@ public class JournalConverterImplTest {
 			0, ddmFormField, rootElement, field);
 	}
 
-	private void _updateContentDynamicElement(
+	private String _updateContentDynamicElement(
 		String fieldName, String fieldType,
 		JournalConverterImpl journalConverterImpl, Boolean multiple,
 		List<String> optionReferences, Element rootElement) {
@@ -493,6 +529,8 @@ public class JournalConverterImplTest {
 				int.class, DDMFormField.class, Element.class, Field.class
 			},
 			0, ddmFormField, rootElement, field);
+
+		return value;
 	}
 
 	private static MockedStatic<DDMStructureLocalServiceUtil> _mockedStatic;

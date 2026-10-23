@@ -7,6 +7,7 @@ package com.liferay.journal.internal.util.test;
 
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
 import com.liferay.dynamic.data.mapping.constants.DDMStructureConstants;
+import com.liferay.dynamic.data.mapping.form.field.type.constants.DDMFormFieldTypeConstants;
 import com.liferay.dynamic.data.mapping.io.DDMFormDeserializer;
 import com.liferay.dynamic.data.mapping.io.DDMFormDeserializerDeserializeRequest;
 import com.liferay.dynamic.data.mapping.io.DDMFormDeserializerDeserializeResponse;
@@ -21,6 +22,7 @@ import com.liferay.dynamic.data.mapping.service.DDMStructureLayoutLocalServiceUt
 import com.liferay.dynamic.data.mapping.storage.Field;
 import com.liferay.dynamic.data.mapping.storage.Fields;
 import com.liferay.dynamic.data.mapping.storage.StorageType;
+import com.liferay.dynamic.data.mapping.test.util.DDMFormTestUtil;
 import com.liferay.dynamic.data.mapping.test.util.DDMStructureTestHelper;
 import com.liferay.dynamic.data.mapping.util.DDM;
 import com.liferay.journal.model.JournalArticle;
@@ -28,9 +30,11 @@ import com.liferay.journal.util.JournalConverter;
 import com.liferay.petra.string.StringBundler;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.model.Group;
+import com.liferay.portal.kernel.test.TestInfo;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
+import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.LocaleUtil;
 import com.liferay.portal.kernel.util.PortalUtil;
@@ -112,6 +116,76 @@ public class JournalConverterImplTest {
 			_ddmStructure, fields, _ddmStructure.getGroupId());
 
 		assertEquals(expectedContent, actualContent);
+	}
+
+	@Test
+	@TestInfo("LPD-110309")
+	public void testGetContentFromListFieldWithOptionReference()
+		throws Exception {
+
+		DDMFormField ddmFormField = DDMFormTestUtil.createDDMFormField(
+			"list", "list", DDMFormFieldTypeConstants.SELECT, "string", true,
+			false, false);
+
+		DDMFormFieldOptions ddmFormFieldOptions = new DDMFormFieldOptions();
+
+		String optionReference = RandomTestUtil.randomString();
+		String optionValue = RandomTestUtil.randomString();
+
+		ddmFormFieldOptions.addOption(optionValue);
+		ddmFormFieldOptions.addOptionLabel(
+			optionValue, _enLocale, RandomTestUtil.randomString());
+		ddmFormFieldOptions.addOptionReference(optionValue, optionReference);
+
+		ddmFormField.setDDMFormFieldOptions(ddmFormFieldOptions);
+
+		DDMForm ddmForm = DDMFormTestUtil.createDDMForm(
+			DDMFormTestUtil.createAvailableLocales(_enLocale), _enLocale);
+
+		ddmForm.addDDMFormField(ddmFormField);
+		ddmForm.setDefinitionSchemaVersion("2.0");
+
+		DDMStructure ddmStructure = _ddmStructureTestHelper.addStructure(
+			ddmForm, StorageType.DEFAULT.getValue());
+
+		Fields fields = new Fields();
+
+		_addField(
+			ddmStructure.getStructureId(), null, fields, "list",
+			HashMapBuilder.<Locale, List<Serializable>>put(
+				_enLocale,
+				Collections.singletonList("[\"" + optionValue + "\"]")
+			).build());
+
+		fields.put(
+			getFieldsDisplayField(
+				ddmStructure.getStructureId(),
+				"list_INSTANCE_" + StringUtil.randomString()));
+
+		String content = _journalConverter.getContent(
+			ddmStructure, fields, ddmStructure.getGroupId());
+
+		_assertFields(
+			fields, _journalConverter.getDDMFields(ddmStructure, content));
+
+		Document document = UnsecureSAXReaderUtil.read(content);
+
+		Element rootElement = document.getRootElement();
+
+		Element dynamicElementElement = rootElement.element("dynamic-element");
+
+		Element dynamicContentElement = dynamicElementElement.element(
+			"dynamic-content");
+
+		Element optionElement = dynamicContentElement.element("option");
+
+		Element optionReferenceElement = dynamicContentElement.element(
+			"option-reference");
+
+		Assert.assertEquals(optionReference, optionReferenceElement.getText());
+
+		Assert.assertEquals(optionValue, dynamicContentElement.getTextTrim());
+		Assert.assertEquals(optionValue, optionElement.getText());
 	}
 
 	@Test
