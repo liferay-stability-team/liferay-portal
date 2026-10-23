@@ -1031,6 +1031,7 @@ public class DDMFormEvaluatorHelper {
 						ddmFormEvaluatorFieldContextKey.getName()) ||
 					!_filterVisibleFieldsMarkedAsRequired(
 						ddmFormEvaluatorFieldContextKey) ||
+					_isFieldReadOnly(ddmFormEvaluatorFieldContextKey) ||
 					!_isFieldEmpty(ddmFormEvaluatorFieldContextKey)) {
 
 					continue;

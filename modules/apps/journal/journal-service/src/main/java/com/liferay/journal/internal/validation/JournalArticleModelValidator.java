@@ -11,6 +11,7 @@ import com.liferay.document.library.kernel.service.DLAppLocalService;
 import com.liferay.dynamic.data.mapping.exception.NoSuchTemplateException;
 import com.liferay.dynamic.data.mapping.exception.StorageFieldNameException;
 import com.liferay.dynamic.data.mapping.exception.StorageFieldRequiredException;
+import com.liferay.dynamic.data.mapping.model.DDMFormField;
 import com.liferay.dynamic.data.mapping.model.DDMStructure;
 import com.liferay.dynamic.data.mapping.model.DDMTemplate;
 import com.liferay.dynamic.data.mapping.service.DDMStructureLocalService;
@@ -288,7 +289,10 @@ public class JournalArticleModelValidator
 					"No field exists for {name=" + field.getName() + "}");
 			}
 
-			if (ddmStructure.getFieldRequired(field.getName()) &&
+			DDMFormField ddmFormField = ddmStructure.getDDMFormField(
+				field.getName(), false);
+
+			if (ddmFormField.isRequired() && !ddmFormField.isReadOnly() &&
 				Validator.isNull(field.getValue(defaultlocale)) &&
 				(classNameId ==
 					JournalArticleConstants.CLASS_NAME_ID_DEFAULT)) {
