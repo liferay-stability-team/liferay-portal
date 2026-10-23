@@ -369,7 +369,7 @@ public class DDMFormValuesValidatorImpl implements DDMFormValuesValidator {
 		}
 		else {
 			if ((value == null) ||
-				(ddmFormField.isRequired() &&
+				(ddmFormField.isRequired() && !ddmFormField.isReadOnly() &&
 				 isNull(ddmFormField, ddmFormFieldValue))) {
 
 				throw new RequiredValue(
@@ -416,7 +416,9 @@ public class DDMFormValuesValidatorImpl implements DDMFormValuesValidator {
 			List<DDMFormFieldValue> ddmFormFieldValues)
 		throws DDMFormValuesValidationException {
 
-		if (ddmFormField.isRequired() && ddmFormFieldValues.isEmpty()) {
+		if (ddmFormField.isRequired() && !ddmFormField.isReadOnly() &&
+			ddmFormFieldValues.isEmpty()) {
+
 			throw new RequiredValue(
 				ddmFormField.getLabel(), ddmFormField.getName());
 		}
