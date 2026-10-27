@@ -313,12 +313,6 @@ public class EditSEOMVCActionCommandTest {
 		MockLiferayPortletActionRequest mockLiferayPortletActionRequest =
 			new MockLiferayPortletActionRequest();
 
-		mockLiferayPortletActionRequest.addParameter(
-			"groupId", String.valueOf(_group.getGroupId()));
-		mockLiferayPortletActionRequest.addParameter(
-			"layoutId", String.valueOf(_layout.getLayoutId()));
-		mockLiferayPortletActionRequest.addParameter(
-			"privateLayout", String.valueOf(_layout.isPrivateLayout()));
 		mockLiferayPortletActionRequest.addParameter("redirect", "fakeURL");
 		mockLiferayPortletActionRequest.addParameter(
 			"selPlid", String.valueOf(_layout.getPlid()));

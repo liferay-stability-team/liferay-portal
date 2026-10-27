@@ -59,13 +59,8 @@ public class EditSEOMVCActionCommand extends BaseMVCActionCommand {
 		ThemeDisplay themeDisplay = (ThemeDisplay)actionRequest.getAttribute(
 			WebKeys.THEME_DISPLAY);
 
-		long groupId = ParamUtil.getLong(actionRequest, "groupId");
-		boolean privateLayout = ParamUtil.getBoolean(
-			actionRequest, "privateLayout");
-		long layoutId = ParamUtil.getLong(actionRequest, "layoutId");
-
 		Layout layout = _layoutLocalService.getLayout(
-			groupId, privateLayout, layoutId);
+			ParamUtil.getLong(actionRequest, "selPlid"));
 
 		Map<Locale, String> titleMap = _localization.getLocalizationMap(
 			actionRequest, "title");
@@ -81,12 +76,12 @@ public class EditSEOMVCActionCommand extends BaseMVCActionCommand {
 			actionRequest, layout);
 
 		layout = _layoutService.updateLayout(
-			groupId, privateLayout, layoutId, layout.getParentLayoutId(),
-			layout.getNameMap(), titleMap, descriptionMap, keywordsMap,
-			robotsMap, layout.getType(), layout.isHidden(),
-			layout.getFriendlyURLMap(), layout.isIconImage(), null,
-			layout.getStyleBookEntryERC(), layout.getStyleBookEntryScopeERC(),
-			layout.getFaviconFileEntryERC(),
+			layout.getGroupId(), layout.isPrivateLayout(), layout.getLayoutId(),
+			layout.getParentLayoutId(), layout.getNameMap(), titleMap,
+			descriptionMap, keywordsMap, robotsMap, layout.getType(),
+			layout.isHidden(), layout.getFriendlyURLMap(), layout.isIconImage(),
+			null, layout.getStyleBookEntryERC(),
+			layout.getStyleBookEntryScopeERC(), layout.getFaviconFileEntryERC(),
 			layout.getFaviconFileEntryScopeERC(),
 			layout.getMasterLayoutPageTemplateEntryERC(), serviceContext);
 
@@ -96,8 +91,8 @@ public class EditSEOMVCActionCommand extends BaseMVCActionCommand {
 			actionRequest, "canonicalURL");
 
 		_layoutSEOEntryService.updateLayoutSEOEntry(
-			groupId, privateLayout, layoutId, canonicalURLEnabled,
-			canonicalURLMap, serviceContext);
+			layout.getGroupId(), layout.isPrivateLayout(), layout.getLayoutId(),
+			canonicalURLEnabled, canonicalURLMap, serviceContext);
 
 		UnicodeProperties formTypeSettingsUnicodeProperties =
 			PropertiesParamUtil.getProperties(

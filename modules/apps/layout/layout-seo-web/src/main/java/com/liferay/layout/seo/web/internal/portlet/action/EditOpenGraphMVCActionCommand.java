@@ -51,16 +51,11 @@ public class EditOpenGraphMVCActionCommand extends BaseMVCActionCommand {
 			ActionRequest actionRequest, ActionResponse actionResponse)
 		throws Exception {
 
-		long groupId = ParamUtil.getLong(actionRequest, "groupId");
-		boolean privateLayout = ParamUtil.getBoolean(
-			actionRequest, "privateLayout");
-		long layoutId = ParamUtil.getLong(actionRequest, "layoutId");
-
 		ServiceContext serviceContext = ServiceContextFactory.getInstance(
 			Layout.class.getName(), actionRequest);
 
 		Layout layout = _layoutLocalService.getLayout(
-			groupId, privateLayout, layoutId);
+			ParamUtil.getLong(actionRequest, "selPlid"));
 
 		boolean openGraphDescriptionEnabled = ParamUtil.getBoolean(
 			actionRequest, "openGraphDescriptionEnabled");
@@ -80,10 +75,11 @@ public class EditOpenGraphMVCActionCommand extends BaseMVCActionCommand {
 			_localization.getLocalizationMap(actionRequest, "openGraphTitle");
 
 		_layoutSEOEntryService.updateLayoutSEOEntry(
-			groupId, privateLayout, layoutId, openGraphDescriptionEnabled,
-			openGraphDescriptionMap, openGraphImageAltMap,
-			openGraphImageFileEntryERC, openGraphImageFileEntryScopeERC,
-			openGraphTitleEnabled, openGraphTitleMap, serviceContext);
+			layout.getGroupId(), layout.isPrivateLayout(), layout.getLayoutId(),
+			openGraphDescriptionEnabled, openGraphDescriptionMap,
+			openGraphImageAltMap, openGraphImageFileEntryERC,
+			openGraphImageFileEntryScopeERC, openGraphTitleEnabled,
+			openGraphTitleMap, serviceContext);
 
 		UnicodeProperties formTypeSettingsUnicodeProperties =
 			PropertiesParamUtil.getProperties(

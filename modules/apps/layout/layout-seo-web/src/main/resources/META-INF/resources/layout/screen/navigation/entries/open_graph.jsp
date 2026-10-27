@@ -31,9 +31,7 @@ Layout selLayout = layoutsSEODisplayContext.getSelLayout();
 	<aui:input name="redirect" type="hidden" value="<%= currentURL %>" />
 	<aui:input name="backURL" type="hidden" value="<%= layoutsSEODisplayContext.getBackURL() %>" />
 	<aui:input name="portletResource" type="hidden" value='<%= ParamUtil.getString(request, "portletResource") %>' />
-	<aui:input name="groupId" type="hidden" value="<%= layoutsSEODisplayContext.getGroupId() %>" />
-	<aui:input name="privateLayout" type="hidden" value="<%= layoutsSEODisplayContext.isPrivateLayout() %>" />
-	<aui:input name="layoutId" type="hidden" value="<%= layoutsSEODisplayContext.getLayoutId() %>" />
+	<aui:input name="selPlid" type="hidden" value="<%= selLayout.getPlid() %>" />
 
 	<liferay-frontend:edit-form-body>
 		<clay:sheet
