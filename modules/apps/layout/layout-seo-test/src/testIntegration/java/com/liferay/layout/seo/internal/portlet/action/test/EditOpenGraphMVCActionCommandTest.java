@@ -6,6 +6,8 @@
 package com.liferay.layout.seo.internal.portlet.action.test;
 
 import com.liferay.arquillian.extension.junit.bridge.junit.Arquillian;
+import com.liferay.layout.page.template.model.LayoutPageTemplateEntry;
+import com.liferay.layout.page.template.test.util.DisplayPageTemplateTestUtil;
 import com.liferay.layout.seo.model.LayoutSEOEntry;
 import com.liferay.layout.seo.model.LayoutSEOEntryCustomMetaTag;
 import com.liferay.layout.seo.model.LayoutSEOEntryCustomMetaTagProperty;
@@ -16,9 +18,11 @@ import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.model.Company;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.Layout;
+import com.liferay.portal.kernel.model.LayoutSetPrototype;
 import com.liferay.portal.kernel.portlet.bridges.mvc.MVCActionCommand;
 import com.liferay.portal.kernel.service.ClassNameLocalService;
 import com.liferay.portal.kernel.service.CompanyLocalService;
+import com.liferay.portal.kernel.service.LayoutLocalService;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
 import com.liferay.portal.kernel.test.TestInfo;
 import com.liferay.portal.kernel.test.portlet.MockLiferayPortletActionRequest;
@@ -70,6 +74,68 @@ public class EditOpenGraphMVCActionCommandTest {
 
 		_company = _companyLocalService.getCompany(_group.getCompanyId());
 		_layout = LayoutTestUtil.addTypePortletLayout(_group);
+	}
+
+	@Test
+	@TestInfo("LPD-112110")
+	public void testEditOpenGraphWithDisplayPageTemplateInLayoutSetPrototype()
+		throws Exception {
+
+		_layoutSetPrototype = LayoutTestUtil.addLayoutSetPrototype(
+			RandomTestUtil.randomString());
+
+		Group group = _layoutSetPrototype.getGroup();
+
+		LayoutPageTemplateEntry layoutPageTemplateEntry =
+			DisplayPageTemplateTestUtil.addDisplayPageTemplate(
+				group.getGroupId());
+
+		Layout displayPageTemplateLayout = _layoutLocalService.getLayout(
+			layoutPageTemplateEntry.getPlid());
+
+		String languageId = _language.getLanguageId(
+			LocaleUtil.getSiteDefault());
+		String title = RandomTestUtil.randomString();
+
+		ReflectionTestUtil.invoke(
+			_mvcActionCommand, "doProcessAction",
+			new Class<?>[] {ActionRequest.class, ActionResponse.class},
+			_getMockLiferayPortletActionRequest(
+				HashMapBuilder.put(
+					"groupId", String.valueOf(group.getGroupId())
+				).put(
+					"layoutId",
+					String.valueOf(displayPageTemplateLayout.getLayoutId())
+				).put(
+					"openGraphTitle_" + languageId, title
+				).put(
+					"openGraphTitleEnabled", "true"
+				).put(
+					"privateLayout", "true"
+				).put(
+					"redirect", RandomTestUtil.randomString()
+				).put(
+					"selPlid",
+					String.valueOf(displayPageTemplateLayout.getPlid())
+				).build()),
+			new MockLiferayPortletActionResponse());
+
+		LayoutSEOEntry layoutSEOEntry =
+			_layoutSEOEntryLocalService.fetchLayoutSEOEntry(
+				displayPageTemplateLayout.getGroupId(),
+				displayPageTemplateLayout.isPrivateLayout(),
+				displayPageTemplateLayout.getLayoutId());
+
+		Assert.assertEquals(
+			title, layoutSEOEntry.getOpenGraphTitle(languageId));
+
+		Layout staleLayout = _layoutLocalService.getLayout(
+			group.getGroupId(), true, displayPageTemplateLayout.getLayoutId());
+
+		Assert.assertNull(
+			_layoutSEOEntryLocalService.fetchLayoutSEOEntry(
+				staleLayout.getGroupId(), staleLayout.isPrivateLayout(),
+				staleLayout.getLayoutId()));
 	}
 
 	@Test
@@ -197,6 +263,8 @@ public class EditOpenGraphMVCActionCommandTest {
 			"layoutId", String.valueOf(_layout.getLayoutId()));
 		mockLiferayPortletActionRequest.setParameter(
 			"privateLayout", String.valueOf(_layout.isPrivateLayout()));
+		mockLiferayPortletActionRequest.setParameter(
+			"selPlid", String.valueOf(_layout.getPlid()));
 
 		for (Map.Entry<String, String> entry : parameterMap.entrySet()) {
 			mockLiferayPortletActionRequest.setParameter(
@@ -223,7 +291,13 @@ public class EditOpenGraphMVCActionCommandTest {
 	private Layout _layout;
 
 	@Inject
+	private LayoutLocalService _layoutLocalService;
+
+	@Inject
 	private LayoutSEOEntryLocalService _layoutSEOEntryLocalService;
+
+	@DeleteAfterTestRun
+	private LayoutSetPrototype _layoutSetPrototype;
 
 	@Inject(filter = "mvc.command.name=/layout/edit_open_graph")
 	private MVCActionCommand _mvcActionCommand;

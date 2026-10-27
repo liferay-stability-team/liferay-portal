@@ -10,6 +10,7 @@ import com.liferay.layout.admin.kernel.model.LayoutTypePortletConstants;
 import com.liferay.layout.page.template.constants.LayoutPageTemplateEntryTypeConstants;
 import com.liferay.layout.page.template.model.LayoutPageTemplateEntry;
 import com.liferay.layout.page.template.service.LayoutPageTemplateEntryLocalService;
+import com.liferay.layout.page.template.test.util.DisplayPageTemplateTestUtil;
 import com.liferay.layout.seo.model.LayoutSEOEntry;
 import com.liferay.layout.seo.service.LayoutSEOEntryLocalService;
 import com.liferay.layout.test.util.LayoutTestUtil;
@@ -17,6 +18,7 @@ import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.model.Company;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.Layout;
+import com.liferay.portal.kernel.model.LayoutSetPrototype;
 import com.liferay.portal.kernel.portlet.bridges.mvc.MVCActionCommand;
 import com.liferay.portal.kernel.service.CompanyLocalService;
 import com.liferay.portal.kernel.service.LayoutLocalService;
@@ -207,6 +209,63 @@ public class EditSEOMVCActionCommandTest {
 	}
 
 	@Test
+	@TestInfo("LPD-112110")
+	public void testUpdateSEOWithDisplayPageTemplateInLayoutSetPrototype()
+		throws Exception {
+
+		_layoutSetPrototype = LayoutTestUtil.addLayoutSetPrototype(
+			RandomTestUtil.randomString());
+
+		Group group = _layoutSetPrototype.getGroup();
+
+		LayoutPageTemplateEntry layoutPageTemplateEntry =
+			DisplayPageTemplateTestUtil.addDisplayPageTemplate(
+				group.getGroupId());
+
+		Layout displayPageTemplateLayout = _layoutLocalService.getLayout(
+			layoutPageTemplateEntry.getPlid());
+
+		Layout staleLayout = _layoutLocalService.getLayout(
+			group.getGroupId(), true, displayPageTemplateLayout.getLayoutId());
+
+		MockLiferayPortletActionRequest mockLiferayPortletActionRequest =
+			_setUpMockLiferayPortletActionRequest();
+		String robots = RandomTestUtil.randomString();
+
+		mockLiferayPortletActionRequest.setParameter(
+			"groupId", String.valueOf(group.getGroupId()));
+		mockLiferayPortletActionRequest.setParameter(
+			"layoutId",
+			String.valueOf(displayPageTemplateLayout.getLayoutId()));
+		mockLiferayPortletActionRequest.setParameter(
+			"privateLayout", Boolean.TRUE.toString());
+		mockLiferayPortletActionRequest.setParameter(
+			"robots_" + _language.getLanguageId(LocaleUtil.getSiteDefault()),
+			robots);
+		mockLiferayPortletActionRequest.setParameter(
+			"selPlid", String.valueOf(displayPageTemplateLayout.getPlid()));
+
+		ReflectionTestUtil.invoke(
+			_mvcActionCommand, "doProcessAction",
+			new Class<?>[] {ActionRequest.class, ActionResponse.class},
+			mockLiferayPortletActionRequest,
+			new MockLiferayPortletActionResponse());
+
+		displayPageTemplateLayout = _layoutLocalService.getLayout(
+			displayPageTemplateLayout.getPlid());
+
+		Assert.assertEquals(
+			robots,
+			displayPageTemplateLayout.getRobots(LocaleUtil.getSiteDefault()));
+
+		Layout layout = _layoutLocalService.getLayout(staleLayout.getPlid());
+
+		Assert.assertEquals(
+			staleLayout.getRobots(LocaleUtil.getSiteDefault()),
+			layout.getRobots(LocaleUtil.getSiteDefault()));
+	}
+
+	@Test
 	@TestInfo("LPS-131982")
 	public void testUpdateSEOWithMasterLayout() throws Exception {
 		LayoutPageTemplateEntry masterLayoutPageTemplateEntry =
@@ -261,6 +320,8 @@ public class EditSEOMVCActionCommandTest {
 		mockLiferayPortletActionRequest.addParameter(
 			"privateLayout", String.valueOf(_layout.isPrivateLayout()));
 		mockLiferayPortletActionRequest.addParameter("redirect", "fakeURL");
+		mockLiferayPortletActionRequest.addParameter(
+			"selPlid", String.valueOf(_layout.getPlid()));
 		mockLiferayPortletActionRequest.setAttribute(
 			WebKeys.THEME_DISPLAY, _getThemeDisplay());
 
@@ -289,6 +350,9 @@ public class EditSEOMVCActionCommandTest {
 
 	@Inject
 	private LayoutSEOEntryLocalService _layoutSEOEntryLocalService;
+
+	@DeleteAfterTestRun
+	private LayoutSetPrototype _layoutSetPrototype;
 
 	@Inject(filter = "mvc.command.name=/layout/edit_seo")
 	private MVCActionCommand _mvcActionCommand;
