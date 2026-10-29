@@ -12,6 +12,7 @@ import com.liferay.object.model.ObjectEntry;
 import com.liferay.object.model.ObjectField;
 import com.liferay.object.model.ObjectRelationship;
 import com.liferay.object.related.models.ObjectRelatedModelsProvider;
+import com.liferay.object.service.ObjectEntryLocalService;
 import com.liferay.object.service.ObjectEntryService;
 import com.liferay.object.service.ObjectFieldLocalService;
 import com.liferay.object.service.ObjectRelationshipLocalService;
@@ -36,10 +37,12 @@ public class ObjectEntry1toMObjectRelatedModelsProviderImpl
 
 	public ObjectEntry1toMObjectRelatedModelsProviderImpl(
 		ObjectDefinition objectDefinition,
+		ObjectEntryLocalService objectEntryLocalService,
 		ObjectEntryService objectEntryService,
 		ObjectFieldLocalService objectFieldLocalService,
 		ObjectRelationshipLocalService objectRelationshipLocalService) {
 
+		_objectEntryLocalService = objectEntryLocalService;
 		_objectEntryService = objectEntryService;
 		_objectFieldLocalService = objectFieldLocalService;
 		_objectRelationshipLocalService = objectRelationshipLocalService;
@@ -70,7 +73,15 @@ public class ObjectEntry1toMObjectRelatedModelsProviderImpl
 				deletionType,
 				ObjectRelationshipConstants.DELETION_TYPE_CASCADE)) {
 
-			for (ObjectEntry objectEntry : relatedModels) {
+			for (ObjectEntry relatedModel : relatedModels) {
+				ObjectEntry objectEntry =
+					_objectEntryLocalService.fetchObjectEntry(
+						relatedModel.getObjectEntryId());
+
+				if (objectEntry == null) {
+					continue;
+				}
+
 				_objectEntryService.deleteObjectEntry(
 					objectEntry.getObjectEntryId());
 			}
@@ -218,7 +229,15 @@ public class ObjectEntry1toMObjectRelatedModelsProviderImpl
 				deletionType,
 				ObjectRelationshipConstants.DELETION_TYPE_CASCADE)) {
 
-			for (ObjectEntry objectEntry : relatedModels) {
+			for (ObjectEntry relatedModel : relatedModels) {
+				ObjectEntry objectEntry =
+					_objectEntryLocalService.fetchObjectEntry(
+						relatedModel.getObjectEntryId());
+
+				if ((objectEntry == null) || objectEntry.isInTrash()) {
+					continue;
+				}
+
 				_objectEntryService.moveObjectEntryToTrash(
 					objectEntry, new ServiceContext());
 			}
@@ -260,6 +279,7 @@ public class ObjectEntry1toMObjectRelatedModelsProviderImpl
 
 	private final String _className;
 	private final long _companyId;
+	private final ObjectEntryLocalService _objectEntryLocalService;
 	private final ObjectEntryService _objectEntryService;
 	private final ObjectFieldLocalService _objectFieldLocalService;
 	private final ObjectRelationshipLocalService
