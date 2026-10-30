@@ -30,6 +30,7 @@ import com.liferay.fragment.model.FragmentEntry;
 import com.liferay.fragment.model.FragmentEntryLink;
 import com.liferay.fragment.service.FragmentEntryLinkLocalService;
 import com.liferay.headless.admin.site.client.custom.field.CustomField;
+import com.liferay.headless.admin.site.client.custom.field.CustomValue;
 import com.liferay.headless.admin.site.client.dto.v1_0.AdvancedStylingConfig;
 import com.liferay.headless.admin.site.client.dto.v1_0.BasicFragmentInstancePageElementDefinition;
 import com.liferay.headless.admin.site.client.dto.v1_0.ContentPageSettings;
@@ -183,6 +184,7 @@ import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
 import com.liferay.portal.vulcan.util.LocalizedMapUtil;
 import com.liferay.segments.constants.SegmentsExperienceConstants;
 import com.liferay.segments.service.SegmentsExperienceLocalService;
+import com.liferay.sites.kernel.util.Sites;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -472,7 +474,7 @@ public class SitePageResourceTest extends BaseSitePageResourceTestCase {
 			"LPD-72013", "LPD-74331", "LPD-75450", "LPD-77124", "LPD-77505",
 			"LPD-77576", "LPD-77852", "LPD-78667", "LPD-79415", "LPD-80061",
 			"LPD-81793", "LPD-83094", "LPD-97454", "LPD-101044", "LPD-101791",
-			"LPD-103694"
+			"LPD-103694", "LPD-110626"
 		}
 	)
 	public void testPutSiteSitePage() throws Exception {
@@ -5152,6 +5154,12 @@ public class SitePageResourceTest extends BaseSitePageResourceTestCase {
 				SitePage.Type.CONTENT_PAGE);
 			_testPutSiteSitePageWithPageSpecificationsWithCustomFields(
 				SitePage.Type.WIDGET_PAGE);
+			_testPutSiteSitePageWithPageSpecificationsWithCustomFieldsWithParentSitePage(
+				SitePage.Type.CONTENT_PAGE);
+			_testPutSiteSitePageWithPageSpecificationsWithCustomFieldsWithParentSitePage(
+				SitePage.Type.PAGE_SET_PAGE);
+			_testPutSiteSitePageWithPageSpecificationsWithCustomFieldsWithParentSitePage(
+				SitePage.Type.WIDGET_PAGE);
 		}
 	}
 
@@ -5188,6 +5196,75 @@ public class SitePageResourceTest extends BaseSitePageResourceTestCase {
 				pageSpecification -> pageSpecification.getCustomFields(),
 				CustomField[].class),
 			testGroup.getGroupId(), updateSitePage.getPageSpecifications());
+	}
+
+	private void
+			_testPutSiteSitePageWithPageSpecificationsWithCustomFieldsWithParentSitePage(
+				SitePage.Type type)
+		throws Exception {
+
+		String externalReferenceCode = RandomTestUtil.randomString();
+
+		SitePage parentSitePage = sitePageResource.postSiteSitePage(
+			testGroup.getExternalReferenceCode(), false,
+			_getRandomSitePage(SitePage.Type.PAGE_SET_PAGE));
+
+		SitePage sitePage = _getRandomSitePage(
+			externalReferenceCode, parentSitePage.getExternalReferenceCode(),
+			ServiceContextTestUtil.getServiceContext(
+				testGroup, TestPropsValues.getUserId()),
+			type, null);
+
+		PageSpecification[] pageSpecifications = null;
+
+		if (type == SitePage.Type.PAGE_SET_PAGE) {
+			pageSpecifications =
+				PageSpecificationsTestUtil.getPageSetPageSpecifications(
+					externalReferenceCode);
+		}
+		else {
+			pageSpecifications =
+				PageSpecificationsTestUtil.getPageSpecifications(
+					externalReferenceCode, testGroup.getGroupId(), type);
+		}
+
+		sitePage.setPageSpecifications(pageSpecifications);
+
+		sitePageResource.postSiteSitePage(
+			testGroup.getExternalReferenceCode(), false, sitePage);
+
+		CustomField[] customFields =
+			PageSpecificationsTestUtil.getCustomFields();
+
+		for (CustomField customField : customFields) {
+			CustomValue customValue = customField.getCustomValue();
+
+			customValue.setData(RandomTestUtil.randomString());
+		}
+
+		for (PageSpecification pageSpecification : pageSpecifications) {
+			pageSpecification.setCustomFields(customFields);
+		}
+
+		SitePageResource sitePageResource = _getSitePageResource(
+			"pageSpecifications");
+
+		SitePage putSitePage = sitePageResource.putSiteSitePage(
+			testGroup.getExternalReferenceCode(), externalReferenceCode, false,
+			sitePage);
+
+		PageSpecificationsTestUtil.assertCustomFields(
+			TransformUtil.transform(
+				pageSpecifications,
+				pageSpecification -> pageSpecification.getCustomFields(),
+				CustomField[].class),
+			testGroup.getGroupId(), putSitePage.getPageSpecifications());
+
+		Layout layout = _layoutLocalService.getLayoutByExternalReferenceCode(
+			externalReferenceCode, testGroup.getGroupId());
+
+		Assert.assertEquals(
+			"true", layout.getTypeSettingsProperty(Sites.LAYOUT_UPDATEABLE));
 	}
 
 	private void

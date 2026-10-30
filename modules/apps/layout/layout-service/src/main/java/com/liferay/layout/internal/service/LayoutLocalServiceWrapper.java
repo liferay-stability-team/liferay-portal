@@ -311,15 +311,31 @@ public class LayoutLocalServiceWrapper
 	}
 
 	private void _copyLayoutClassedModelUsages(
-		Layout sourceLayout, Layout targetLayout) {
+		Layout sourceLayout, long[] sourceSegmentsExperiencesIds,
+		Layout targetLayout) {
 
 		long[] classNameIds = {
 			_portal.getClassNameId(FragmentEntryLink.class.getName()),
 			_portal.getClassNameId(LayoutPageTemplateStructure.class.getName())
 		};
+
+		Set<String> orphanedPortletIds = _getOrphanedPortletIds(
+			sourceLayout, sourceSegmentsExperiencesIds);
 		List<LayoutClassedModelUsage> sourceLayoutLayoutClassedModelUsages =
 			_layoutClassedModelUsageLocalService.
 				getLayoutClassedModelUsagesByPlid(sourceLayout.getPlid());
+
+		if (!orphanedPortletIds.isEmpty()) {
+			long portletClassNameId = _portal.getClassNameId(Portlet.class);
+
+			sourceLayoutLayoutClassedModelUsages = ListUtil.filter(
+				sourceLayoutLayoutClassedModelUsages,
+				layoutClassedModelUsage ->
+					(layoutClassedModelUsage.getContainerType() !=
+						portletClassNameId) ||
+					!orphanedPortletIds.contains(
+						layoutClassedModelUsage.getContainerKey()));
+		}
 
 		_deleteLayoutClassedModelUsages(
 			classNameIds, sourceLayoutLayoutClassedModelUsages, targetLayout);
@@ -1012,6 +1028,42 @@ public class LayoutLocalServiceWrapper
 		return layoutPortletIds;
 	}
 
+	private Set<String> _getOrphanedPortletIds(
+		Layout layout, long[] segmentsExperiencesIds) {
+
+		Set<String> orphanedPortletIds = new HashSet<>();
+
+		for (FragmentEntryLink fragmentEntryLink :
+				_fragmentEntryLinkLocalService.
+					getFragmentEntryLinksBySegmentsExperienceId(
+						layout.getGroupId(), segmentsExperiencesIds,
+						layout.getPlid(), true)) {
+
+			orphanedPortletIds.addAll(
+				_portletRegistry.getFragmentEntryLinkPortletIds(
+					fragmentEntryLink));
+		}
+
+		if (orphanedPortletIds.isEmpty()) {
+			return orphanedPortletIds;
+		}
+
+		for (FragmentEntryLink fragmentEntryLink :
+				_fragmentEntryLinkLocalService.getFragmentEntryLinksByPlid(
+					layout.getGroupId(), layout.getPlid())) {
+
+			if (fragmentEntryLink.isDeleted()) {
+				continue;
+			}
+
+			orphanedPortletIds.removeAll(
+				_portletRegistry.getFragmentEntryLinkPortletIds(
+					fragmentEntryLink));
+		}
+
+		return orphanedPortletIds;
+	}
+
 	private String _getScopeExternalReferenceCode(
 			String externalReferenceCode, String scopeExternalReferenceCode,
 			long sourceGroupId, Layout targetLayout)
@@ -1680,7 +1732,8 @@ public class LayoutLocalServiceWrapper
 
 			// Copy classedModelUsages after copying the structure
 
-			_copyLayoutClassedModelUsages(_sourceLayout, _targetLayout);
+			_copyLayoutClassedModelUsages(
+				_sourceLayout, _sourceSegmentsExperiencesIds, _targetLayout);
 
 			_sites.copyExpandoBridgeAttributes(_sourceLayout, _targetLayout);
 
