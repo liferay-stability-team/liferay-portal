@@ -562,18 +562,33 @@ public class LayoutUtil {
 		typeSettingsUnicodeProperties.putAll(
 			_getLastImportSettingsMap(serviceContext.getUserId()));
 
-		if (!Objects.equals(
-				typeSettingsUnicodeProperties,
-				layout.getTypeSettingsProperties())) {
-
-			layout = LayoutServiceUtil.updateTypeSettings(
-				layout.getGroupId(), layout.isPrivateLayout(),
-				layout.getLayoutId(), typeSettingsUnicodeProperties.toString());
-		}
-
-		return _updateLayout(
+		layout = _updateLayout(
 			layout, nameMap, null, null, null, null, null, null, null, null,
 			null, friendlyURLMap, serviceContext);
+
+		UnicodeProperties layoutTypeSettingsUnicodeProperties =
+			layout.getTypeSettingsProperties();
+
+		for (String key : new String[] {"layoutUpdateable", "privateLayout"}) {
+			String value = layoutTypeSettingsUnicodeProperties.getProperty(key);
+
+			if (value == null) {
+				continue;
+			}
+
+			typeSettingsUnicodeProperties.setProperty(key, value);
+		}
+
+		if (Objects.equals(
+				typeSettingsUnicodeProperties,
+				layoutTypeSettingsUnicodeProperties)) {
+
+			return layout;
+		}
+
+		return LayoutServiceUtil.updateTypeSettings(
+			layout.getGroupId(), layout.isPrivateLayout(), layout.getLayoutId(),
+			typeSettingsUnicodeProperties.toString());
 	}
 
 	public static Layout updatePortletLayout(
