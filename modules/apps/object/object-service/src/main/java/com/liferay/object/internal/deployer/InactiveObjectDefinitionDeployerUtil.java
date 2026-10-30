@@ -10,6 +10,7 @@ import com.liferay.object.internal.related.models.ObjectEntry1toMObjectRelatedMo
 import com.liferay.object.internal.related.models.ObjectEntryMtoMObjectRelatedModelsProviderImpl;
 import com.liferay.object.model.ObjectDefinition;
 import com.liferay.object.related.models.ObjectRelatedModelsProviderRegistryUtil;
+import com.liferay.object.service.ObjectEntryLocalService;
 import com.liferay.object.service.ObjectEntryService;
 import com.liferay.object.service.ObjectFieldLocalService;
 import com.liferay.object.service.ObjectRelationshipLocalService;
@@ -26,7 +27,9 @@ import org.osgi.framework.ServiceRegistration;
 public class InactiveObjectDefinitionDeployerUtil {
 
 	public static List<ServiceRegistration<?>> deploy(
-		BundleContext bundleContext, ObjectEntryService objectEntryService,
+		BundleContext bundleContext,
+		ObjectEntryLocalService objectEntryLocalService,
+		ObjectEntryService objectEntryService,
 		ObjectFieldLocalService objectFieldLocalService,
 		ObjectRelationshipLocalService objectRelationshipLocalService,
 		ObjectDefinition objectDefinition) {
@@ -35,13 +38,14 @@ public class InactiveObjectDefinitionDeployerUtil {
 			ObjectRelatedModelsProviderRegistryUtil.register(
 				bundleContext, objectDefinition,
 				new ObjectEntryMtoMObjectRelatedModelsProviderImpl(
-					objectDefinition, objectEntryService,
-					objectRelationshipLocalService)),
+					objectDefinition, objectEntryLocalService,
+					objectEntryService, objectRelationshipLocalService)),
 			ObjectRelatedModelsProviderRegistryUtil.register(
 				bundleContext, objectDefinition,
 				new ObjectEntry1toMObjectRelatedModelsProviderImpl(
-					objectDefinition, objectEntryService,
-					objectFieldLocalService, objectRelationshipLocalService)),
+					objectDefinition, objectEntryLocalService,
+					objectEntryService, objectFieldLocalService,
+					objectRelationshipLocalService)),
 			ObjectRelatedModelsProviderRegistryUtil.register(
 				bundleContext, objectDefinition,
 				new ObjectEntry1to1ObjectRelatedModelsProviderImpl(
