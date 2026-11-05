@@ -15,8 +15,10 @@ import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.model.Group;
 import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.repository.model.FileEntry;
+import com.liferay.portal.kernel.repository.model.FileVersion;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.test.ReflectionTestUtil;
+import com.liferay.portal.kernel.test.TestInfo;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
 import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
 import com.liferay.portal.kernel.test.util.GroupTestUtil;
@@ -25,6 +27,7 @@ import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.ContentTypes;
+import com.liferay.portal.kernel.util.HttpComponentsUtil;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.StringUtil;
@@ -32,6 +35,8 @@ import com.liferay.portal.test.rule.Inject;
 import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import com.liferay.portal.test.rule.PermissionCheckerMethodTestRule;
 import com.liferay.portal.util.PortalImpl;
+
+import java.util.Date;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -150,7 +155,6 @@ public class DLURLHelperTest {
 			StringPool.BLANK, false, false);
 
 		Assert.assertTrue(
-			downloadURL,
 			downloadURL.contains(StringUtil.toLowerCase(urlTitle)));
 	}
 
@@ -177,6 +181,45 @@ public class DLURLHelperTest {
 			downloadURL,
 			downloadURL.startsWith(
 				"http://localhost:" + PortalUtil.getPortalServerPort(false)));
+	}
+
+	@Test
+	@TestInfo("LPD-112412")
+	public void testGetDownloadURLNotAppendVersionUpdated() throws Exception {
+		ServiceContext serviceContext =
+			ServiceContextTestUtil.getServiceContext(
+				_group.getGroupId(), _user.getUserId());
+		String urlTitle = RandomTestUtil.randomString();
+
+		FileEntry fileEntry = _dlAppLocalService.addFileEntry(
+			null, _user.getUserId(), _group.getGroupId(),
+			DLFolderConstants.DEFAULT_PARENT_FOLDER_ID,
+			RandomTestUtil.randomString(),
+			ContentTypes.APPLICATION_OCTET_STREAM,
+			RandomTestUtil.randomString(), urlTitle,
+			RandomTestUtil.randomString(), RandomTestUtil.randomString(),
+			(byte[])null, null, null, null, serviceContext);
+
+		fileEntry = _dlAppLocalService.updateFileEntry(
+			_user.getUserId(), fileEntry.getFileEntryId(), StringPool.BLANK,
+			ContentTypes.TEXT_PLAIN, RandomTestUtil.randomString(), urlTitle,
+			StringPool.BLANK, null, DLVersionNumberIncrease.MAJOR, (byte[])null,
+			null, null, null, serviceContext);
+
+		FileVersion fileVersion = fileEntry.getFileVersion();
+
+		String downloadURL = _dlURLHelper.getDownloadURL(
+			fileEntry, fileVersion, _getThemeDisplay(), StringPool.BLANK, false,
+			false);
+
+		Assert.assertTrue(
+			downloadURL.contains(StringUtil.toLowerCase(urlTitle)));
+
+		Date modifiedDate = fileVersion.getModifiedDate();
+
+		Assert.assertEquals(
+			downloadURL, String.valueOf(modifiedDate.getTime()),
+			HttpComponentsUtil.getParameter(downloadURL, "t", false));
 	}
 
 	@Test
