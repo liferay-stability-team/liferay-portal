@@ -3325,6 +3325,59 @@ public class CalendarBookingLocalServiceTest {
 			invitedCalendarBooking.getTitle(LocaleUtil.US));
 	}
 
+	@Test
+	public void testUpdateStatusNotifiesReinvitedInvitee() throws Exception {
+		ServiceContext serviceContext = createServiceContext();
+
+		Calendar calendar = CalendarTestUtil.addCalendar(_user, serviceContext);
+
+		User invitedUser = UserTestUtil.addUser();
+
+		Calendar invitedCalendar = CalendarTestUtil.addCalendar(invitedUser);
+
+		long startTime = System.currentTimeMillis();
+
+		serviceContext.setWorkflowAction(WorkflowConstants.ACTION_PUBLISH);
+
+		CalendarBooking calendarBooking =
+			CalendarBookingTestUtil.addMasterCalendarBooking(
+				_user, calendar, new long[] {invitedCalendar.getCalendarId()},
+				startTime, startTime + (Time.HOUR * 10), serviceContext);
+
+		CalendarBooking childCalendarBooking = getChildCalendarBooking(
+			calendarBooking);
+
+		childCalendarBooking = _calendarBookingLocalService.updateStatus(
+			_user.getUserId(), childCalendarBooking,
+			WorkflowConstants.STATUS_DENIED, serviceContext);
+
+		MailServiceTestUtil.clearMessages();
+
+		childCalendarBooking = _calendarBookingLocalService.updateStatus(
+			_user.getUserId(), childCalendarBooking,
+			WorkflowConstants.STATUS_PENDING, serviceContext);
+
+		assertStatus(childCalendarBooking, WorkflowConstants.STATUS_PENDING);
+
+		List<MailMessage> mailMessages = MailServiceTestUtil.getMailMessages(
+			"Subject",
+			StringBundler.concat(
+				"Calendar: Event Notification for \"",
+				calendarBooking.getTitle(LocaleUtil.getSiteDefault()),
+				StringPool.QUOTE));
+
+		Assert.assertEquals(mailMessages.toString(), 1, mailMessages.size());
+
+		MailMessage mailMessage = mailMessages.get(0);
+
+		Assert.assertEquals(
+			StringBundler.concat(
+				invitedUser.getFullName(), StringPool.SPACE,
+				StringPool.LESS_THAN, invitedUser.getEmailAddress(),
+				StringPool.GREATER_THAN),
+			mailMessage.getFirstHeaderValue("To"));
+	}
+
 	@Rule
 	public SearchTestRule searchTestRule = new SearchTestRule();
 
