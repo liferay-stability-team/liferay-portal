@@ -463,13 +463,14 @@ public class ObjectDefinitionDeployerImpl implements ObjectDefinitionDeployer {
 			ObjectRelatedModelsProviderRegistryUtil.register(
 				_bundleContext, objectDefinition,
 				new ObjectEntryMtoMObjectRelatedModelsProviderImpl(
-					objectDefinition, _objectEntryService,
-					_objectRelationshipLocalService)),
+					objectDefinition, _objectEntryLocalService,
+					_objectEntryService, _objectRelationshipLocalService)),
 			ObjectRelatedModelsProviderRegistryUtil.register(
 				_bundleContext, objectDefinition,
 				new ObjectEntry1toMObjectRelatedModelsProviderImpl(
-					objectDefinition, _objectEntryService,
-					_objectFieldLocalService, _objectRelationshipLocalService)),
+					objectDefinition, _objectEntryLocalService,
+					_objectEntryService, _objectFieldLocalService,
+					_objectRelationshipLocalService)),
 			ObjectRelatedModelsProviderRegistryUtil.register(
 				_bundleContext, objectDefinition,
 				new ObjectEntry1to1ObjectRelatedModelsProviderImpl(

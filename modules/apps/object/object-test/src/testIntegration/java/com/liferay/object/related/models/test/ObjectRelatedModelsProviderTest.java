@@ -156,6 +156,12 @@ public class ObjectRelatedModelsProviderTest {
 	}
 
 	@Test
+	public void testDeleteObjectEntry() throws Exception {
+		_testDeleteObjectEntry(ObjectRelationshipConstants.TYPE_MANY_TO_MANY);
+		_testDeleteObjectEntry(ObjectRelationshipConstants.TYPE_ONE_TO_MANY);
+	}
+
+	@Test
 	public void testMoveObjectEntryToTrash() throws Exception {
 		_testMoveObjectEntryToTrash(
 			ObjectRelationshipConstants.TYPE_MANY_TO_MANY);
@@ -722,6 +728,67 @@ public class ObjectRelatedModelsProviderTest {
 			ServiceContextTestUtil.getServiceContext());
 	}
 
+	private List<ObjectEntry> _addCascadeObjectEntries(String relationshipType)
+		throws Exception {
+
+		ObjectDefinition objectDefinition1 =
+			ObjectDefinitionTestUtil.publishObjectDefinition(
+				Arrays.asList(
+					ObjectFieldUtil.createObjectField(
+						ObjectFieldConstants.BUSINESS_TYPE_TEXT,
+						ObjectFieldConstants.DB_TYPE_STRING,
+						RandomTestUtil.randomString(), StringUtil.randomId())),
+				ObjectDefinitionConstants.SCOPE_SITE);
+		ObjectDefinition objectDefinition2 =
+			ObjectDefinitionTestUtil.publishObjectDefinition(
+				Arrays.asList(
+					ObjectFieldUtil.createObjectField(
+						ObjectFieldConstants.BUSINESS_TYPE_TEXT,
+						ObjectFieldConstants.DB_TYPE_STRING,
+						RandomTestUtil.randomString(), StringUtil.randomId())),
+				ObjectDefinitionConstants.SCOPE_SITE);
+
+		_addObjectRelationship(
+			objectDefinition1, objectDefinition2,
+			ObjectRelationshipConstants.DELETION_TYPE_CASCADE,
+			relationshipType);
+
+		ObjectEntry objectEntry1 = _addObjectEntry(
+			objectDefinition1, Collections.emptyMap());
+
+		ObjectEntry objectEntry2 = _addRelatedObjectEntry(
+			objectDefinition2, objectEntry1, relationshipType);
+		ObjectEntry objectEntry3 = _addRelatedObjectEntry(
+			objectDefinition2, objectEntry1, relationshipType);
+
+		_addObjectRelationship(
+			objectDefinition2, objectDefinition2,
+			ObjectRelationshipConstants.DELETION_TYPE_CASCADE,
+			relationshipType);
+
+		if (StringUtil.equals(
+				relationshipType,
+				ObjectRelationshipConstants.TYPE_MANY_TO_MANY)) {
+
+			ObjectRelationshipTestUtil.addObjectRelationshipMappingTableValues(
+				_objectRelationship.getObjectRelationshipId(),
+				objectEntry2.getObjectEntryId(),
+				objectEntry3.getObjectEntryId());
+		}
+		else {
+			_objectEntryLocalService.partialUpdateObjectEntry(
+				TestPropsValues.getUserId(), objectEntry3.getObjectEntryId(),
+				objectEntry3.getObjectEntryFolderId(),
+				HashMapBuilder.<String, Serializable>put(
+					_relationshipObjectField.getName(),
+					objectEntry2.getObjectEntryId()
+				).build(),
+				ServiceContextTestUtil.getServiceContext());
+		}
+
+		return Arrays.asList(objectEntry1, objectEntry2, objectEntry3);
+	}
+
 	private ObjectEntry _addObjectEntry(
 			ObjectDefinition objectDefinition, Map<String, Serializable> values)
 		throws Exception {
@@ -852,6 +919,21 @@ public class ObjectRelatedModelsProviderTest {
 		PrincipalThreadLocal.setName(user.getUserId());
 	}
 
+	private void _testDeleteObjectEntry(String relationshipType)
+		throws Exception {
+
+		List<ObjectEntry> objectEntries = _addCascadeObjectEntries(
+			relationshipType);
+
+		_objectEntryLocalService.deleteObjectEntry(objectEntries.get(0));
+
+		for (ObjectEntry objectEntry : objectEntries) {
+			Assert.assertNull(
+				_objectEntryLocalService.fetchObjectEntry(
+					objectEntry.getObjectEntryId()));
+		}
+	}
+
 	private void _testMoveObjectEntryToTrash(String relationshipType)
 		throws Exception {
 
@@ -953,6 +1035,18 @@ public class ObjectRelatedModelsProviderTest {
 			() -> _objectEntryLocalService.moveObjectEntryToTrash(
 				TestPropsValues.getUserId(), objectEntry6,
 				ServiceContextTestUtil.getServiceContext()));
+
+		List<ObjectEntry> objectEntries = _addCascadeObjectEntries(
+			relationshipType);
+
+		_objectEntryLocalService.moveObjectEntryToTrash(
+			TestPropsValues.getUserId(), objectEntries.get(0),
+			ServiceContextTestUtil.getServiceContext());
+
+		for (ObjectEntry objectEntry : objectEntries) {
+			_assertObjectEntryStatus(
+				WorkflowConstants.STATUS_IN_TRASH, objectEntry);
+		}
 	}
 
 	private void _testObjectEntry1toMObjectUnrelatedModelsProviderImpl(

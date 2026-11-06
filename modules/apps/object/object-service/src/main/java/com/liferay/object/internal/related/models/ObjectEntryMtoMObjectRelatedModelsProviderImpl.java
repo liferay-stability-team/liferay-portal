@@ -11,6 +11,7 @@ import com.liferay.object.model.ObjectDefinition;
 import com.liferay.object.model.ObjectEntry;
 import com.liferay.object.model.ObjectRelationship;
 import com.liferay.object.related.models.ObjectRelatedModelsProvider;
+import com.liferay.object.service.ObjectEntryLocalService;
 import com.liferay.object.service.ObjectEntryService;
 import com.liferay.object.service.ObjectRelationshipLocalService;
 import com.liferay.petra.sql.dsl.expression.Predicate;
@@ -31,9 +32,11 @@ public class ObjectEntryMtoMObjectRelatedModelsProviderImpl
 
 	public ObjectEntryMtoMObjectRelatedModelsProviderImpl(
 		ObjectDefinition objectDefinition,
+		ObjectEntryLocalService objectEntryLocalService,
 		ObjectEntryService objectEntryService,
 		ObjectRelationshipLocalService objectRelationshipLocalService) {
 
+		_objectEntryLocalService = objectEntryLocalService;
 		_objectEntryService = objectEntryService;
 		_objectRelationshipLocalService = objectRelationshipLocalService;
 
@@ -76,7 +79,15 @@ public class ObjectEntryMtoMObjectRelatedModelsProviderImpl
 				ObjectRelationshipConstants.DELETION_TYPE_CASCADE) &&
 			!objectRelationship.isReverse()) {
 
-			for (ObjectEntry objectEntry : relatedModels) {
+			for (ObjectEntry relatedModel : relatedModels) {
+				ObjectEntry objectEntry =
+					_objectEntryLocalService.fetchObjectEntry(
+						relatedModel.getObjectEntryId());
+
+				if (objectEntry == null) {
+					continue;
+				}
+
 				_objectEntryService.deleteObjectEntry(
 					objectEntry.getObjectEntryId());
 			}
@@ -202,7 +213,15 @@ public class ObjectEntryMtoMObjectRelatedModelsProviderImpl
 				ObjectRelationshipConstants.DELETION_TYPE_CASCADE) &&
 			!objectRelationship.isReverse()) {
 
-			for (ObjectEntry objectEntry : relatedModels) {
+			for (ObjectEntry relatedModel : relatedModels) {
+				ObjectEntry objectEntry =
+					_objectEntryLocalService.fetchObjectEntry(
+						relatedModel.getObjectEntryId());
+
+				if ((objectEntry == null) || objectEntry.isInTrash()) {
+					continue;
+				}
+
 				_objectEntryService.moveObjectEntryToTrash(
 					objectEntry, new ServiceContext());
 			}
@@ -243,6 +262,7 @@ public class ObjectEntryMtoMObjectRelatedModelsProviderImpl
 
 	private final String _className;
 	private final long _companyId;
+	private final ObjectEntryLocalService _objectEntryLocalService;
 	private final ObjectEntryService _objectEntryService;
 	private final ObjectRelationshipLocalService
 		_objectRelationshipLocalService;

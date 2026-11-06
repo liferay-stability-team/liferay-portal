@@ -791,8 +791,9 @@ public class ObjectDefinitionLocalServiceImpl
 			DBPartitionUtil.getPartitionKey(
 				objectDefinition.getObjectDefinitionId()),
 			objectDefinitionId -> InactiveObjectDefinitionDeployerUtil.deploy(
-				_bundleContext, _objectEntryService, _objectFieldLocalService,
-				_objectRelationshipLocalService, objectDefinition));
+				_bundleContext, _objectEntryLocalService, _objectEntryService,
+				_objectFieldLocalService, _objectRelationshipLocalService,
+				objectDefinition));
 	}
 
 	@Override
@@ -1145,8 +1146,8 @@ public class ObjectDefinitionLocalServiceImpl
 						DBPartitionUtil.getPartitionKey(
 							objectDefinition.getObjectDefinitionId()),
 						InactiveObjectDefinitionDeployerUtil.deploy(
-							_bundleContext, _objectEntryService,
-							_objectFieldLocalService,
+							_bundleContext, _objectEntryLocalService,
+							_objectEntryService, _objectFieldLocalService,
 							_objectRelationshipLocalService, objectDefinition));
 				}
 			});
