@@ -37,6 +37,7 @@ import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.theme.ThemeDisplay;
+import com.liferay.portal.kernel.util.Constants;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.PortalUtil;
 import com.liferay.portal.kernel.util.ProxyUtil;
@@ -50,6 +51,7 @@ import com.liferay.portal.upload.test.util.UploadTestUtil;
 
 import java.util.Objects;
 
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.ClassRule;
@@ -80,6 +82,11 @@ public class SaveAsDraftArticleMVCActionCommandTest {
 
 		_serviceContext = ServiceContextTestUtil.getServiceContext(
 			_group.getGroupId());
+	}
+
+	@After
+	public void tearDown() {
+		ReflectionTestUtil.setFieldValue(_mvcActionCommand, "_portal", _portal);
 	}
 
 	@Test
@@ -135,6 +142,140 @@ public class SaveAsDraftArticleMVCActionCommandTest {
 			previewURL.contains(String.valueOf(journalArticle.getVersion())));
 	}
 
+	@Test
+	public void testProcessActionPreview() throws Exception {
+		JournalArticle journalArticle = JournalTestUtil.addArticle(
+			_group.getGroupId(),
+			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID);
+
+		MockLiferayPortletActionRequest mockLiferayPortletActionRequest =
+			_getMockLiferayPortletActionRequest(journalArticle);
+
+		mockLiferayPortletActionRequest.addParameter(
+			Constants.CMD, Constants.PREVIEW);
+
+		MockLiferayPortletActionResponse mockLiferayPortletActionResponse =
+			new MockLiferayPortletActionResponse();
+
+		_mvcActionCommand.processAction(
+			mockLiferayPortletActionRequest, mockLiferayPortletActionResponse);
+
+		MockHttpServletResponse mockHttpServletResponse =
+			(MockHttpServletResponse)
+				mockLiferayPortletActionResponse.getHttpServletResponse();
+
+		JSONObject jsonObject = JSONFactoryUtil.createJSONObject(
+			mockHttpServletResponse.getContentAsString());
+
+		Assert.assertEquals(
+			journalArticle.getVersion(), jsonObject.getDouble("version"), 0);
+
+		Assert.assertEquals(
+			1,
+			JournalArticleLocalServiceUtil.getArticlesCount(
+				_group.getGroupId(), journalArticle.getArticleId()));
+	}
+
+	@Test
+	public void testProcessActionPreviewWithDefaultDisplayPage()
+		throws Exception {
+
+		JournalArticle journalArticle = JournalTestUtil.addArticle(
+			_group.getGroupId(),
+			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID);
+
+		_assertPreviewURL(
+			AssetDisplayPageConstants.TYPE_DEFAULT, journalArticle,
+			DisplayPageTemplateTestUtil.addDisplayPageTemplate(
+				_group.getGroupId(),
+				_portal.getClassNameId(JournalArticle.class.getName()),
+				journalArticle.getDDMStructureKey(), true,
+				WorkflowConstants.STATUS_APPROVED));
+	}
+
+	@Test
+	public void testProcessActionPreviewWithDoAsUserId() throws Exception {
+		String doAsUserId = RandomTestUtil.randomString();
+		JournalArticle journalArticle = JournalTestUtil.addArticle(
+			_group.getGroupId(),
+			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID);
+
+		String previewURL = _getPreviewURL(
+			AssetDisplayPageConstants.TYPE_SPECIFIC, doAsUserId, journalArticle,
+			DisplayPageTemplateTestUtil.addDisplayPageTemplate(
+				_group.getGroupId(),
+				_portal.getClassNameId(JournalArticle.class.getName()),
+				journalArticle.getDDMStructureKey(), false,
+				WorkflowConstants.STATUS_APPROVED));
+
+		Assert.assertTrue(
+			previewURL, previewURL.contains("doAsUserId=" + doAsUserId));
+	}
+
+	@Test
+	public void testProcessActionPreviewWithSpecificDisplayPage()
+		throws Exception {
+
+		JournalArticle journalArticle = JournalTestUtil.addArticle(
+			_group.getGroupId(),
+			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID);
+
+		_assertPreviewURL(
+			AssetDisplayPageConstants.TYPE_SPECIFIC, journalArticle,
+			DisplayPageTemplateTestUtil.addDisplayPageTemplate(
+				_group.getGroupId(),
+				_portal.getClassNameId(JournalArticle.class.getName()),
+				journalArticle.getDDMStructureKey(), false,
+				WorkflowConstants.STATUS_APPROVED));
+	}
+
+	@Test
+	public void testProcessActionPreviewWithSpecificDisplayPageFromAnotherGroup()
+		throws Exception {
+
+		_otherGroup = GroupTestUtil.addGroup();
+
+		JournalArticle journalArticle = JournalTestUtil.addArticle(
+			_group.getGroupId(),
+			JournalFolderConstants.DEFAULT_PARENT_FOLDER_ID);
+		LayoutPageTemplateEntry layoutPageTemplateEntry =
+			DisplayPageTemplateTestUtil.addDisplayPageTemplate(
+				_otherGroup.getGroupId());
+
+		String previewURL = _getPreviewURL(
+			AssetDisplayPageConstants.TYPE_SPECIFIC, null, journalArticle,
+			layoutPageTemplateEntry);
+
+		Assert.assertFalse(
+			previewURL,
+			previewURL.contains(
+				"selPlid=" + layoutPageTemplateEntry.getPlid()));
+	}
+
+	private void _assertPreviewURL(
+			int displayPageType, JournalArticle journalArticle,
+			LayoutPageTemplateEntry layoutPageTemplateEntry)
+		throws Exception {
+
+		String previewURL = _getPreviewURL(
+			displayPageType, null, journalArticle, layoutPageTemplateEntry);
+
+		Assert.assertTrue(
+			previewURL, previewURL.contains("/portal/get_page_preview"));
+		Assert.assertTrue(
+			previewURL,
+			previewURL.contains(
+				"selPlid=" + layoutPageTemplateEntry.getPlid()));
+		Assert.assertTrue(
+			previewURL,
+			previewURL.contains("version=" + journalArticle.getVersion()));
+
+		Assert.assertEquals(
+			1,
+			JournalArticleLocalServiceUtil.getArticlesCount(
+				_group.getGroupId(), journalArticle.getArticleId()));
+	}
+
 	private MockMultipartHttpServletRequest
 		_createMockMultipartHttpServletRequest() {
 
@@ -174,6 +315,48 @@ public class SaveAsDraftArticleMVCActionCommandTest {
 			WebKeys.THEME_DISPLAY, _getThemeDisplay());
 
 		return mockLiferayPortletActionRequest;
+	}
+
+	private String _getPreviewURL(
+			int displayPageType, String doAsUserId,
+			JournalArticle journalArticle,
+			LayoutPageTemplateEntry layoutPageTemplateEntry)
+		throws Exception {
+
+		MockLiferayPortletActionRequest mockLiferayPortletActionRequest =
+			_getMockLiferayPortletActionRequest(journalArticle);
+
+		mockLiferayPortletActionRequest.addParameter(
+			"assetDisplayPageId",
+			String.valueOf(
+				layoutPageTemplateEntry.getLayoutPageTemplateEntryId()));
+		mockLiferayPortletActionRequest.addParameter(
+			"displayPageType", String.valueOf(displayPageType));
+		mockLiferayPortletActionRequest.addParameter(
+			Constants.CMD, Constants.PREVIEW);
+
+		if (doAsUserId != null) {
+			ThemeDisplay themeDisplay =
+				(ThemeDisplay)mockLiferayPortletActionRequest.getAttribute(
+					WebKeys.THEME_DISPLAY);
+
+			themeDisplay.setDoAsUserId(doAsUserId);
+		}
+
+		MockLiferayPortletActionResponse mockLiferayPortletActionResponse =
+			new MockLiferayPortletActionResponse();
+
+		_mvcActionCommand.processAction(
+			mockLiferayPortletActionRequest, mockLiferayPortletActionResponse);
+
+		MockHttpServletResponse mockHttpServletResponse =
+			(MockHttpServletResponse)
+				mockLiferayPortletActionResponse.getHttpServletResponse();
+
+		JSONObject jsonObject = JSONFactoryUtil.createJSONObject(
+			mockHttpServletResponse.getContentAsString());
+
+		return jsonObject.getString("previewURL");
 	}
 
 	private ThemeDisplay _getThemeDisplay() throws Exception {
@@ -241,6 +424,9 @@ public class SaveAsDraftArticleMVCActionCommandTest {
 
 	@Inject(filter = "mvc.command.name=/journal/save_as_draft_article")
 	private MVCActionCommand _mvcActionCommand;
+
+	@DeleteAfterTestRun
+	private Group _otherGroup;
 
 	@Inject
 	private Portal _portal;
