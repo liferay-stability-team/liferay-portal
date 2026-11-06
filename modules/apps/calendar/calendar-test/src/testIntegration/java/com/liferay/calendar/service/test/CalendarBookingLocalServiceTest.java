@@ -2999,14 +2999,14 @@ public class CalendarBookingLocalServiceTest {
 
 		String organizerMailMessageBody = organizerMailMessage.getBody();
 
-		MailMessage updateMailMessage = updateMailMessages.get(0);
-
 		Assert.assertTrue(
-			organizerMailMessageBody,
 			organizerMailMessageBody.contains(
 				StringBundler.concat(
 					"<strong>", deniedCalendar.getName(_user.getLanguageId()),
 					"</strong> has declined this invitation.")));
+
+		MailMessage updateMailMessage = updateMailMessages.get(0);
+
 		Assert.assertEquals(
 			StringBundler.concat(
 				invitedUser.getFullName(), StringPool.SPACE,
