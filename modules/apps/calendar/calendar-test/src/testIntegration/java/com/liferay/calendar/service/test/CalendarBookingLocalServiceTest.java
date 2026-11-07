@@ -2759,6 +2759,56 @@ public class CalendarBookingLocalServiceTest {
 	}
 
 	@Test
+	public void testUpdateCalendarBookingPreservesDeniedChildStatus()
+		throws Exception {
+
+		ServiceContext serviceContext = createServiceContext();
+
+		Calendar calendar = CalendarTestUtil.addCalendar(_user, serviceContext);
+
+		Calendar invitedCalendar = CalendarTestUtil.addCalendar(
+			calendar.getCalendarResource(), serviceContext);
+
+		long startTime = System.currentTimeMillis();
+
+		long endTime = startTime + (Time.HOUR * 10);
+
+		serviceContext.setWorkflowAction(WorkflowConstants.ACTION_PUBLISH);
+
+		CalendarBooking calendarBooking =
+			CalendarBookingTestUtil.addMasterCalendarBooking(
+				_user, calendar, new long[] {invitedCalendar.getCalendarId()},
+				startTime, endTime, serviceContext);
+
+		_calendarBookingLocalService.updateStatus(
+			_user.getUserId(), getChildCalendarBooking(calendarBooking),
+			WorkflowConstants.STATUS_DENIED, serviceContext);
+
+		long newEndTime = endTime + Time.DAY;
+		long newStartTime = startTime + Time.DAY;
+
+		calendarBooking = _calendarBookingLocalService.updateCalendarBooking(
+			_user.getUserId(), calendarBooking.getCalendarBookingId(),
+			calendarBooking.getCalendarId(),
+			new long[] {invitedCalendar.getCalendarId()},
+			RandomTestUtil.randomLocaleStringMap(),
+			RandomTestUtil.randomLocaleStringMap(),
+			RandomTestUtil.randomString(), newStartTime, newEndTime,
+			calendarBooking.isAllDay(), calendarBooking.getRecurrence(),
+			calendarBooking.getFirstReminder(),
+			calendarBooking.getFirstReminderType(),
+			calendarBooking.getSecondReminder(),
+			calendarBooking.getSecondReminderType(), serviceContext);
+
+		CalendarBooking childCalendarBooking = getChildCalendarBooking(
+			calendarBooking);
+
+		Assert.assertEquals(newEndTime, childCalendarBooking.getEndTime());
+		Assert.assertEquals(newStartTime, childCalendarBooking.getStartTime());
+		assertStatus(childCalendarBooking, WorkflowConstants.STATUS_DENIED);
+	}
+
+	@Test
 	public void testUpdateCalendarBookingPreservesDescriptionTranslations()
 		throws Exception {
 
@@ -2879,6 +2929,101 @@ public class CalendarBookingLocalServiceTest {
 		Map<Locale, String> titleMap = calendarBooking.getTitleMap();
 
 		Assert.assertFalse(titleMap.containsKey(LocaleUtil.GERMANY));
+	}
+
+	@Test
+	public void testUpdateCalendarBookingWithDeniedChildNotifiesInvitees()
+		throws Exception {
+
+		ServiceContext serviceContext = createServiceContext();
+
+		Calendar calendar = CalendarTestUtil.addCalendar(_user, serviceContext);
+
+		Calendar deniedCalendar = CalendarTestUtil.addCalendar(
+			UserTestUtil.addUser());
+
+		User invitedUser = UserTestUtil.addUser();
+
+		Calendar invitedCalendar = CalendarTestUtil.addCalendar(invitedUser);
+
+		long startTime = System.currentTimeMillis();
+
+		long endTime = startTime + (Time.HOUR * 10);
+
+		serviceContext.setWorkflowAction(WorkflowConstants.ACTION_PUBLISH);
+
+		CalendarBooking calendarBooking =
+			CalendarBookingTestUtil.addMasterCalendarBooking(
+				_user, calendar,
+				new long[] {
+					deniedCalendar.getCalendarId(),
+					invitedCalendar.getCalendarId()
+				},
+				startTime, endTime, serviceContext);
+
+		List<CalendarBooking> deniedCalendarBookings =
+			_calendarBookingLocalService.getCalendarBookings(
+				deniedCalendar.getCalendarId());
+
+		_calendarBookingLocalService.updateStatus(
+			_user.getUserId(), deniedCalendarBookings.get(0),
+			WorkflowConstants.STATUS_DENIED, serviceContext);
+
+		serviceContext = createServiceContext();
+
+		serviceContext.setWorkflowAction(WorkflowConstants.ACTION_PUBLISH);
+
+		calendarBooking = _calendarBookingLocalService.updateCalendarBooking(
+			_user.getUserId(), calendarBooking.getCalendarBookingId(),
+			calendarBooking.getCalendarId(),
+			new long[] {
+				deniedCalendar.getCalendarId(), invitedCalendar.getCalendarId()
+			},
+			calendarBooking.getTitleMap(), calendarBooking.getDescriptionMap(),
+			calendarBooking.getLocation(), startTime + Time.DAY,
+			endTime + Time.DAY, calendarBooking.isAllDay(),
+			calendarBooking.getRecurrence(), calendarBooking.getFirstReminder(),
+			calendarBooking.getFirstReminderType(),
+			calendarBooking.getSecondReminder(),
+			calendarBooking.getSecondReminderType(), serviceContext);
+
+		List<MailMessage> organizerMailMessages =
+			MailServiceTestUtil.getMailMessages(
+				"To",
+				StringBundler.concat(
+					_user.getFullName(), StringPool.SPACE, StringPool.LESS_THAN,
+					_user.getEmailAddress(), StringPool.GREATER_THAN));
+		List<MailMessage> updateMailMessages =
+			MailServiceTestUtil.getMailMessages(
+				"Subject",
+				StringBundler.concat(
+					"Calendar: Event Update for \"",
+					calendarBooking.getTitle(LocaleUtil.getSiteDefault()),
+					StringPool.QUOTE));
+
+		Assert.assertEquals(
+			organizerMailMessages.toString(), 1, organizerMailMessages.size());
+		Assert.assertEquals(
+			updateMailMessages.toString(), 1, updateMailMessages.size());
+
+		MailMessage organizerMailMessage = organizerMailMessages.get(0);
+
+		String organizerMailMessageBody = organizerMailMessage.getBody();
+
+		Assert.assertTrue(
+			organizerMailMessageBody.contains(
+				StringBundler.concat(
+					"<strong>", deniedCalendar.getName(_user.getLanguageId()),
+					"</strong> has declined this invitation.")));
+
+		MailMessage updateMailMessage = updateMailMessages.get(0);
+
+		Assert.assertEquals(
+			StringBundler.concat(
+				invitedUser.getFullName(), StringPool.SPACE,
+				StringPool.LESS_THAN, invitedUser.getEmailAddress(),
+				StringPool.GREATER_THAN),
+			updateMailMessage.getFirstHeaderValue("To"));
 	}
 
 	@Test
@@ -3189,6 +3334,59 @@ public class CalendarBookingLocalServiceTest {
 		Assert.assertEquals(
 			titleMap.get(LocaleUtil.US),
 			invitedCalendarBooking.getTitle(LocaleUtil.US));
+	}
+
+	@Test
+	public void testUpdateStatusNotifiesReinvitedInvitee() throws Exception {
+		ServiceContext serviceContext = createServiceContext();
+
+		Calendar calendar = CalendarTestUtil.addCalendar(_user, serviceContext);
+
+		User invitedUser = UserTestUtil.addUser();
+
+		Calendar invitedCalendar = CalendarTestUtil.addCalendar(invitedUser);
+
+		long startTime = System.currentTimeMillis();
+
+		serviceContext.setWorkflowAction(WorkflowConstants.ACTION_PUBLISH);
+
+		CalendarBooking calendarBooking =
+			CalendarBookingTestUtil.addMasterCalendarBooking(
+				_user, calendar, new long[] {invitedCalendar.getCalendarId()},
+				startTime, startTime + (Time.HOUR * 10), serviceContext);
+
+		CalendarBooking childCalendarBooking = getChildCalendarBooking(
+			calendarBooking);
+
+		childCalendarBooking = _calendarBookingLocalService.updateStatus(
+			_user.getUserId(), childCalendarBooking,
+			WorkflowConstants.STATUS_DENIED, serviceContext);
+
+		MailServiceTestUtil.clearMessages();
+
+		childCalendarBooking = _calendarBookingLocalService.updateStatus(
+			_user.getUserId(), childCalendarBooking,
+			WorkflowConstants.STATUS_PENDING, serviceContext);
+
+		assertStatus(childCalendarBooking, WorkflowConstants.STATUS_PENDING);
+
+		List<MailMessage> mailMessages = MailServiceTestUtil.getMailMessages(
+			"Subject",
+			StringBundler.concat(
+				"Calendar: Event Notification for \"",
+				calendarBooking.getTitle(LocaleUtil.getSiteDefault()),
+				StringPool.QUOTE));
+
+		Assert.assertEquals(mailMessages.toString(), 1, mailMessages.size());
+
+		MailMessage mailMessage = mailMessages.get(0);
+
+		Assert.assertEquals(
+			StringBundler.concat(
+				invitedUser.getFullName(), StringPool.SPACE,
+				StringPool.LESS_THAN, invitedUser.getEmailAddress(),
+				StringPool.GREATER_THAN),
+			mailMessage.getFirstHeaderValue("To"));
 	}
 
 	@Rule
