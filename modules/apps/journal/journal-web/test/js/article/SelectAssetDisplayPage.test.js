@@ -20,9 +20,7 @@ jest.mock('frontend-js-components-web', () => ({
 }));
 
 const DISPLAY_PAGE_TYPE_DEFAULT = 1;
-
 const DISPLAY_PAGE_TYPE_NONE = 0;
-
 const DISPLAY_PAGE_TYPE_SPECIFIC = 2;
 
 const DEFAULT_PROPS = {

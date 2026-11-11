@@ -3428,25 +3428,6 @@ baseTest(
 		const articleTitle = getRandomString();
 		const displayPageTemplateName = getRandomString();
 
-		const previewAndGoBack = async () => {
-			await journalEditArticlePage.openFieldSet(
-				'Display Page',
-				'displayPage'
-			);
-
-			await clickAndExpectToBeVisible({
-				target: page.getByRole('heading', {name: 'Preview'}),
-				trigger: journalEditArticlePage.previewButton,
-			});
-
-			await page
-				.getByRole('dialog')
-				.getByLabel('Close', {exact: true})
-				.click();
-
-			await page.goBack();
-		};
-
 		await displayPageTemplatesPage.goto(site.friendlyUrlPath);
 
 		await displayPageTemplatesPage.createTemplate({
@@ -3470,6 +3451,25 @@ baseTest(
 			.filter({hasText: articleTitle});
 
 		await articleRow.getByRole('link', {name: articleTitle}).click();
+
+		const previewAndGoBack = async () => {
+			await journalEditArticlePage.openFieldSet(
+				'Display Page',
+				'displayPage'
+			);
+
+			await clickAndExpectToBeVisible({
+				target: page.getByRole('heading', {name: 'Preview'}),
+				trigger: journalEditArticlePage.previewButton,
+			});
+
+			await page
+				.getByRole('dialog')
+				.getByLabel('Close', {exact: true})
+				.click();
+
+			await page.goBack();
+		};
 
 		await previewAndGoBack();
 
