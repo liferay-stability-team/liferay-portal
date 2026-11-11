@@ -3487,5 +3487,30 @@ baseTest(
 		await expect(
 			page.getByTestId('row').filter({hasText: updatedArticleTitle})
 		).toContainText('Draft');
+
+		const displayPageOnlyArticleTitle = getRandomString();
+
+		await journalEditArticlePage.goto({siteUrl: site.friendlyUrlPath});
+
+		await journalEditArticlePage.fillTitle(displayPageOnlyArticleTitle);
+
+		await journalEditArticlePage.publishArticle();
+
+		const displayPageOnlyArticleRow = page
+			.getByTestId('row')
+			.filter({hasText: displayPageOnlyArticleTitle});
+
+		await displayPageOnlyArticleRow
+			.getByRole('link', {name: displayPageOnlyArticleTitle})
+			.click();
+
+		await journalEditArticlePage.selectSpecificDisplayPage(
+			displayPageTemplateName
+		);
+
+		await previewAndGoBack();
+
+		await expect(displayPageOnlyArticleRow).toContainText('Approved');
+		await expect(displayPageOnlyArticleRow).not.toContainText('Draft');
 	}
 );
