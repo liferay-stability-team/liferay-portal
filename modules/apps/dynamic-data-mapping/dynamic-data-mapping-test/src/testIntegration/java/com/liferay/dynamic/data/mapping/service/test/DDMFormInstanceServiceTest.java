@@ -31,6 +31,7 @@ import com.liferay.portal.kernel.test.util.GroupTestUtil;
 import com.liferay.portal.kernel.test.util.RoleTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
 import com.liferay.portal.kernel.test.util.UserTestUtil;
+import com.liferay.portal.kernel.util.HashMapBuilder;
 import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.LocaleThreadLocal;
 import com.liferay.portal.kernel.util.LocaleUtil;
@@ -40,6 +41,7 @@ import com.liferay.portal.test.rule.LiferayIntegrationTestRule;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Locale;
+import java.util.Map;
 
 import org.junit.Assert;
 import org.junit.ClassRule;
@@ -110,8 +112,12 @@ public class DDMFormInstanceServiceTest {
 
 			Group group = GroupTestUtil.addGroup();
 
-			_addDDMFormInstance(group, "able");
-			_addDDMFormInstance(group, "[bob");
+			_addDDMFormInstance(
+				group, Collections.singletonMap(LocaleUtil.US, "able"),
+				LocaleUtil.US);
+			_addDDMFormInstance(
+				group, Collections.singletonMap(LocaleUtil.US, "[bob"),
+				LocaleUtil.US);
 
 			LocaleThreadLocal.setDefaultLocale(LocaleUtil.JAPAN);
 
@@ -129,15 +135,108 @@ public class DDMFormInstanceServiceTest {
 		}
 	}
 
-	private void _addDDMFormInstance(Group group, String name)
+	@Test
+	public void testSearchWhenNameMapIsLocalized() throws Exception {
+		Locale defaultLocale = LocaleThreadLocal.getDefaultLocale();
+
+		try (ContextUserReplace contextUserReplace = new ContextUserReplace(
+				TestPropsValues.getUser())) {
+
+			Group group = GroupTestUtil.addGroup();
+
+			_addDDMFormInstance(
+				group, Collections.singletonMap(LocaleUtil.JAPAN, "ダイヤモンド"),
+				LocaleUtil.JAPAN);
+			_addDDMFormInstance(
+				group, Collections.singletonMap(LocaleUtil.JAPAN, "投票"),
+				LocaleUtil.JAPAN);
+			_addDDMFormInstance(
+				group, Collections.singletonMap(LocaleUtil.US, "Alpha"),
+				LocaleUtil.US);
+			_addDDMFormInstance(
+				group,
+				HashMapBuilder.put(
+					LocaleUtil.JAPAN, "1Delta"
+				).put(
+					LocaleUtil.US, "1Delta"
+				).build(),
+				LocaleUtil.US);
+			_addDDMFormInstance(
+				group,
+				HashMapBuilder.put(
+					LocaleUtil.JAPAN, "Charlie"
+				).put(
+					LocaleUtil.US, "Charlie"
+				).build(),
+				LocaleUtil.US);
+			_addDDMFormInstance(
+				group,
+				HashMapBuilder.put(
+					LocaleUtil.JAPAN, "Echo"
+				).put(
+					LocaleUtil.US, "Echo"
+				).build(),
+				LocaleUtil.US);
+			_addDDMFormInstance(
+				group,
+				HashMapBuilder.put(
+					LocaleUtil.JAPAN, "[Bravo"
+				).put(
+					LocaleUtil.US, "[Bravo"
+				).build(),
+				LocaleUtil.US);
+			_addDDMFormInstance(
+				group,
+				HashMapBuilder.put(
+					LocaleUtil.JAPAN, "アルファ"
+				).put(
+					LocaleUtil.US, "Zulu"
+				).build(),
+				LocaleUtil.US);
+
+			LocaleThreadLocal.setDefaultLocale(LocaleUtil.JAPAN);
+
+			Assert.assertEquals(
+				Arrays.asList(
+					"[Bravo", "1Delta", "Alpha", "Charlie", "Echo", "アルファ",
+					"ダイヤモンド", "投票"),
+				ListUtil.toList(
+					_ddmFormInstanceService.search(
+						group.getCompanyId(), group.getGroupId(), null,
+						QueryUtil.ALL_POS, QueryUtil.ALL_POS,
+						DDMFormInstanceNameComparator.getInstance(true)),
+					ddmFormInstance -> ddmFormInstance.getName(
+						LocaleUtil.JAPAN, true)));
+
+			LocaleThreadLocal.setDefaultLocale(LocaleUtil.US);
+
+			Assert.assertEquals(
+				Arrays.asList(
+					"[Bravo", "1Delta", "Alpha", "Charlie", "Echo", "Zulu",
+					"ダイヤモンド", "投票"),
+				ListUtil.toList(
+					_ddmFormInstanceService.search(
+						group.getCompanyId(), group.getGroupId(), null,
+						QueryUtil.ALL_POS, QueryUtil.ALL_POS,
+						DDMFormInstanceNameComparator.getInstance(true)),
+					ddmFormInstance -> ddmFormInstance.getName(
+						LocaleUtil.US, true)));
+		}
+		finally {
+			LocaleThreadLocal.setDefaultLocale(defaultLocale);
+		}
+	}
+
+	private void _addDDMFormInstance(
+			Group group, Map<Locale, String> nameMap,
+			Locale defaultLocale)
 		throws Exception {
 
 		DDMFormInstance ddmFormInstance =
 			DDMFormInstanceTestUtil.addDDMFormInstance(
 				group, TestPropsValues.getUserId());
 
-		ddmFormInstance.setNameMap(
-			Collections.singletonMap(LocaleUtil.US, name));
+		ddmFormInstance.setNameMap(nameMap, defaultLocale);
 
 		_ddmFormInstanceLocalService.updateDDMFormInstance(ddmFormInstance);
 	}
