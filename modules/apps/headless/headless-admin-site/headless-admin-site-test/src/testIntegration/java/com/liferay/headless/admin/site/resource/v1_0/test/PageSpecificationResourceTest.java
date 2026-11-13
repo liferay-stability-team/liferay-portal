@@ -26,6 +26,7 @@ import com.liferay.headless.admin.site.resource.v1_0.test.util.SettingsTestUtil;
 import com.liferay.layout.content.model.LayoutContentVersion;
 import com.liferay.layout.content.provider.LayoutContentVersionDataProvider;
 import com.liferay.layout.content.service.LayoutContentVersionLocalService;
+import com.liferay.layout.manager.LayoutLockManager;
 import com.liferay.layout.page.template.model.LayoutPageTemplateEntry;
 import com.liferay.layout.page.template.service.LayoutPageTemplateEntryLocalService;
 import com.liferay.layout.test.util.ContentLayoutTestUtil;
@@ -36,12 +37,15 @@ import com.liferay.petra.function.UnsafeSupplier;
 import com.liferay.petra.string.StringPool;
 import com.liferay.portal.kernel.model.Layout;
 import com.liferay.portal.kernel.model.LayoutConstants;
+import com.liferay.portal.kernel.model.User;
 import com.liferay.portal.kernel.service.LayoutLocalService;
 import com.liferay.portal.kernel.service.ServiceContext;
 import com.liferay.portal.kernel.test.rule.AggregateTestRule;
+import com.liferay.portal.kernel.test.rule.DeleteAfterTestRun;
 import com.liferay.portal.kernel.test.util.RandomTestUtil;
 import com.liferay.portal.kernel.test.util.ServiceContextTestUtil;
 import com.liferay.portal.kernel.test.util.TestPropsValues;
+import com.liferay.portal.kernel.test.util.UserTestUtil;
 import com.liferay.portal.kernel.util.ArrayUtil;
 import com.liferay.portal.kernel.util.GetterUtil;
 import com.liferay.portal.kernel.util.ListUtil;
@@ -158,6 +162,8 @@ public class PageSpecificationResourceTest
 			() -> pageSpecificationResource.deleteSitePageSpecification(
 				testGroup.getExternalReferenceCode(),
 				layoutPageTemplateEntry.getExternalReferenceCode()));
+
+		_testDeleteSitePageSpecificationWithLockedDraft(serviceContext);
 	}
 
 	@Override
@@ -923,6 +929,28 @@ public class PageSpecificationResourceTest
 		_assertDeleteSitePageSpecification(draftLayout);
 	}
 
+	private void _testDeleteSitePageSpecificationWithLockedDraft(
+			ServiceContext serviceContext)
+		throws Exception {
+
+		Layout contentLayout = _addLayout(
+			LayoutConstants.TYPE_CONTENT, serviceContext);
+
+		Layout draftLayout = contentLayout.fetchDraftLayout();
+
+		_user = UserTestUtil.addUser();
+
+		draftLayout.setUserId(_user.getUserId());
+
+		draftLayout.setStatus(WorkflowConstants.STATUS_DRAFT);
+
+		draftLayout = _layoutLocalService.updateLayout(draftLayout);
+
+		_layoutLockManager.getLock(draftLayout, TestPropsValues.getUserId());
+
+		_assertDeleteSitePageSpecification(draftLayout);
+	}
+
 	private void _testGetSitePageSpecification(
 			Layout layout, String pageSpecificationExternalReferenceCode)
 		throws Exception {
@@ -1362,6 +1390,9 @@ public class PageSpecificationResourceTest
 	private LayoutLocalService _layoutLocalService;
 
 	@Inject
+	private LayoutLockManager _layoutLockManager;
+
+	@Inject
 	private LayoutPageTemplateEntryLocalService
 		_layoutPageTemplateEntryLocalService;
 
@@ -1372,5 +1403,8 @@ public class PageSpecificationResourceTest
 	private StyleBookEntryLocalService _styleBookEntryLocalService;
 
 	private Layout _testGroupLayout;
+
+	@DeleteAfterTestRun
+	private User _user;
 
 }

@@ -138,6 +138,69 @@ public class DiscardDraftLayoutMVCActionCommandTest {
 	}
 
 	@Test
+	@TestInfo("LPP-66527")
+	public void testDiscardDraftLayoutWithLayoutLockedByNonownerUser()
+		throws Exception {
+
+		Layout layout = LayoutTestUtil.addTypeContentLayout(_group);
+
+		Layout draftLayout = layout.fetchDraftLayout();
+
+		ContentLayoutTestUtil.addFragmentEntryLinkToLayout(
+			"{}", draftLayout,
+			_segmentsExperienceLocalService.fetchDefaultSegmentsExperienceId(
+				draftLayout.getPlid()));
+
+		ContentLayoutTestUtil.publishLayout(draftLayout, layout);
+
+		draftLayout = layout.fetchDraftLayout();
+
+		int fragmentEntryLinksCount =
+			_fragmentEntryLinkLocalService.getFragmentEntryLinksCountByPlid(
+				_group.getGroupId(), draftLayout.getPlid());
+
+		draftLayout.setStatus(WorkflowConstants.STATUS_DRAFT);
+
+		draftLayout = _layoutLocalService.updateLayout(draftLayout);
+
+		User user = UserTestUtil.addGroupAdminUser(_group);
+
+		_layoutLockManager.getLock(draftLayout, user.getUserId());
+
+		MockActionRequest mockActionRequest =
+			_getMockLiferayPortletActionRequest(draftLayout, user);
+
+		MockActionResponse mockActionResponse = new MockActionResponse();
+
+		UserTestUtil.setUser(user);
+
+		ServiceContextThreadLocal.pushServiceContext(
+			ServiceContextTestUtil.getServiceContext(
+				_group.getGroupId(), user.getUserId()));
+
+		try {
+			_discardDraftLayoutMVCActionCommand.processAction(
+				mockActionRequest, mockActionResponse);
+		}
+		finally {
+			ServiceContextThreadLocal.popServiceContext();
+		}
+
+		Assert.assertNotEquals(
+			_layoutLockManager.getLockedLayoutURL(mockActionRequest),
+			mockActionResponse.getRedirectedUrl());
+
+		draftLayout = layout.fetchDraftLayout();
+
+		Assert.assertEquals(
+			fragmentEntryLinksCount,
+			_fragmentEntryLinkLocalService.getFragmentEntryLinksCountByPlid(
+				_group.getGroupId(), draftLayout.getPlid()));
+		Assert.assertEquals(
+			WorkflowConstants.STATUS_APPROVED, draftLayout.getStatus());
+	}
+
+	@Test
 	public void testDiscardDraftLayoutWithLockedLayout() throws Exception {
 		Layout layout = LayoutTestUtil.addTypeContentLayout(_group);
 
