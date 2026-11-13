@@ -94,7 +94,9 @@ public class SharepointRepositoryAuthorizationCapabilityTest {
 		_repository = _repositoryLocalService.addRepository(
 			null, TestPropsValues.getUserId(), _group.getGroupId(),
 			_classNameLocalService.getClassNameId(
-				_CLASS_NAME_SHAREPOINT_EXT_REPOSITORY + name),
+				"com.liferay.sharepoint.rest.repository.internal.document." +
+					"library.repository.external.SharepointExtRepository" +
+						name),
 			DLFolderConstants.DEFAULT_PARENT_FOLDER_ID,
 			RandomTestUtil.randomString(), StringPool.BLANK,
 			RandomTestUtil.randomString(),
@@ -215,7 +217,7 @@ public class SharepointRepositoryAuthorizationCapabilityTest {
 		Assert.assertTrue(
 			StringUtil.startsWith(
 				_getRedirectedURL(mockLiferayPortletRenderResponse),
-				"https://login.microsoftonline.com/"));
+				"https://login.microsoftonline.com"));
 	}
 
 	private void _testAuthorizeWhenUserIsNotSignedIn() throws Exception {
@@ -238,10 +240,6 @@ public class SharepointRepositoryAuthorizationCapabilityTest {
 
 		Assert.assertNull(_getRedirectedURL(mockLiferayPortletRenderResponse));
 	}
-
-	private static final String _CLASS_NAME_SHAREPOINT_EXT_REPOSITORY =
-		"com.liferay.sharepoint.rest.repository.internal.document.library." +
-			"repository.external.SharepointExtRepository";
 
 	private static final String _FACTORY_PID =
 		"com.liferay.sharepoint.rest.repository.internal.configuration." +
