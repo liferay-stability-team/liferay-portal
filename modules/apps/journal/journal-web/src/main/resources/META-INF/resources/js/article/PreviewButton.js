@@ -18,6 +18,10 @@ export default function PreviewButton({
 		document.getElementById(`${namespace}articleId`).value
 	);
 
+	const classNameId = document.getElementById(
+		`${namespace}classNameId`
+	)?.value;
+
 	const lockRef = useRef(null);
 
 	useEffect(() => {
@@ -40,14 +44,14 @@ export default function PreviewButton({
 		};
 	}, [namespace]);
 
-	const enableDraft = !!articleId;
-
 	return (
 		<ClayButton
 			aria-label={Liferay.Language.get(
 				'a-draft-will-be-saved-before-displaying-the-preview'
 			)}
-			disabled={disabled || !enableDraft}
+			disabled={
+				disabled || (!articleId && !!classNameId && classNameId !== '0')
+			}
 			displayType="secondary"
 			onClick={() => {
 				if (lockRef.current?.isLocked()) {
@@ -79,8 +83,7 @@ export default function PreviewButton({
 				})
 					.then((response) => response.json())
 					.then((response) => {
-						const {articleId, error, friendlyUrlMap, version} =
-							response;
+						const {error, friendlyUrlMap, version} = response;
 
 						if (error) {
 							openToast({
@@ -98,10 +101,17 @@ export default function PreviewButton({
 								value: Date.now().toString(),
 							});
 
+							if (!articleId) {
+								Liferay.fire('asyncFormSubmission', {
+									articleId: response.articleId,
+									friendlyUrlMap,
+								});
+							}
+
 							updateJournalInput({
 								name: 'articleId',
 								namespace,
-								value: articleId,
+								value: response.articleId,
 							});
 
 							updateJournalInput({

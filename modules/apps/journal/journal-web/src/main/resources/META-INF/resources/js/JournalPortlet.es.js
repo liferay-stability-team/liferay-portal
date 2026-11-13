@@ -340,6 +340,26 @@ export default function _JournalPortlet({
 		});
 	};
 
+	const fillEmptyFriendlyURL = (friendlyURL) => {
+		const friendlyUrlInputComponent = Liferay.component(
+			`${namespace}friendlyURL`
+		);
+
+		if (!friendlyURL || friendlyUrlInputComponent.getValue()) {
+			return;
+		}
+
+		friendlyUrlInputComponent.updateInputLanguage(
+			friendlyURL,
+			defaultLanguageId
+		);
+		friendlyUrlInputComponent.updateInput(friendlyURL);
+
+		Liferay.fire('journal:update-friendly-url', {
+			friendlyURL,
+		});
+	};
+
 	let formChangeListener;
 	let hasUnsavedChanges = false;
 
@@ -374,22 +394,7 @@ export default function _JournalPortlet({
 
 						Liferay.fire('asyncFormSubmission', {articleId});
 
-						const friendlyUrlInputComponent = Liferay.component(
-							`${namespace}friendlyURL`
-						);
-
-						if (!friendlyUrlInputComponent.getValue()) {
-							const friendlyURL = data.friendlyURL;
-							friendlyUrlInputComponent.updateInputLanguage(
-								friendlyURL,
-								defaultLanguageId
-							);
-							friendlyUrlInputComponent.updateInput(friendlyURL);
-
-							Liferay.fire('journal:update-friendly-url', {
-								friendlyURL,
-							});
-						}
+						fillEmptyFriendlyURL(data.friendlyURL);
 					}
 
 					const articleIdWrapper = document.getElementById(
@@ -494,6 +499,13 @@ export default function _JournalPortlet({
 			},
 		}),
 
+		Liferay.on('asyncFormSubmission', (event) => {
+			articleId = event.articleId;
+
+			if (event.friendlyUrlMap) {
+				fillEmptyFriendlyURL(event.friendlyUrlMap[defaultLanguageId]);
+			}
+		}),
 		Liferay.on('ddmFormError', handleDDMFormError),
 		Liferay.on('ddmFormValid', () =>
 			handleDDMFormValid({

@@ -260,4 +260,127 @@ describe('JournalPortlet', () => {
 		expect(formDateInput).toHaveValue('1700000000000');
 		expect(lock.unlock).toHaveBeenCalledWith();
 	});
+
+	it('routes the next autosave to update_article after Preview creates the draft', async () => {
+		jest.useFakeTimers();
+
+		renderComponent();
+
+		JournalPortlet({
+			articleId: null,
+			autoSaveDraftEnabled: true,
+			autoSaveDraftURL: 'http://localhost/o/journal/auto_save_article',
+			availableLocales: ['en_US'],
+			classNameId: '0',
+			contentTitle: 'Test',
+			defaultLanguageId: 'en_US',
+			hasSavePermission: true,
+			namespace: NAMESPACE,
+		});
+
+		await act(async () => {});
+
+		const [, asyncFormSubmissionHandler] =
+			global.Liferay.on.mock.calls.find(
+				([eventName]) => eventName === 'asyncFormSubmission'
+			);
+
+		asyncFormSubmissionHandler({articleId: '12345'});
+
+		const newArticleIdInput = document.getElementById(
+			`${NAMESPACE}newArticleId`
+		);
+
+		newArticleIdInput.value = 'changed';
+		newArticleIdInput.dispatchEvent(new Event('change', {bubbles: true}));
+
+		fetch.mockResponseOnce(
+			JSON.stringify({
+				articleId: '12345',
+				modifiedDate: 1700000000000,
+				success: true,
+				version: '1.0',
+			})
+		);
+
+		act(() => {
+			jest.advanceTimersByTime(1500);
+		});
+
+		await act(async () => {});
+
+		expect(
+			document.getElementById(`${NAMESPACE}jakarta-portlet-action`)
+		).toHaveValue('/journal/update_article');
+		expect(document.getElementById(`${NAMESPACE}articleId`)).toHaveValue(
+			'12345'
+		);
+	});
+
+	it('fills the empty Friendly URL field when Preview creates the draft', async () => {
+		renderComponent();
+
+		JournalPortlet({
+			articleId: null,
+			autoSaveDraftEnabled: true,
+			autoSaveDraftURL: 'http://localhost/o/journal/auto_save_article',
+			availableLocales: ['en_US'],
+			classNameId: '0',
+			contentTitle: 'Test',
+			defaultLanguageId: 'en_US',
+			hasSavePermission: true,
+			namespace: NAMESPACE,
+		});
+
+		const [, asyncFormSubmissionHandler] =
+			global.Liferay.on.mock.calls.find(
+				([eventName]) => eventName === 'asyncFormSubmission'
+			);
+
+		asyncFormSubmissionHandler({
+			articleId: '12345',
+			friendlyUrlMap: {en_US: 'preview-title', es_ES: 'titulo'},
+		});
+
+		expect(friendlyUrlInputComponent.updateInput).toHaveBeenCalledWith(
+			'preview-title'
+		);
+		expect(
+			friendlyUrlInputComponent.updateInputLanguage
+		).toHaveBeenCalledWith('preview-title', 'en_US');
+		expect(global.Liferay.fire).toHaveBeenCalledWith(
+			'journal:update-friendly-url',
+			{friendlyURL: 'preview-title'}
+		);
+	});
+
+	it('keeps the Friendly URL the user typed when Preview creates the draft', () => {
+		friendlyUrlInputComponent.getValue.mockReturnValue('typed-url');
+
+		renderComponent();
+
+		JournalPortlet({
+			articleId: null,
+			autoSaveDraftEnabled: true,
+			autoSaveDraftURL: 'http://localhost/o/journal/auto_save_article',
+			availableLocales: ['en_US'],
+			classNameId: '0',
+			contentTitle: 'Test',
+			defaultLanguageId: 'en_US',
+			hasSavePermission: true,
+			namespace: NAMESPACE,
+		});
+
+		const [, asyncFormSubmissionHandler] =
+			global.Liferay.on.mock.calls.find(
+				([eventName]) => eventName === 'asyncFormSubmission'
+			);
+
+		asyncFormSubmissionHandler({
+			articleId: '12345',
+			friendlyUrlMap: {en_US: 'preview-title'},
+		});
+
+		expect(friendlyUrlInputComponent.updateInput).not.toHaveBeenCalled();
+	});
 });
