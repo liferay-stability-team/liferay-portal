@@ -6,6 +6,7 @@
 package com.liferay.document.library.web.internal.portlet.action;
 
 import com.liferay.document.library.constants.DLPortletKeys;
+import com.liferay.document.library.kernel.exception.NoSuchFolderException;
 import com.liferay.document.library.kernel.model.DLFolder;
 import com.liferay.document.library.kernel.model.DLFolderConstants;
 import com.liferay.document.library.kernel.service.DLAppService;
@@ -20,6 +21,8 @@ import com.liferay.document.library.web.internal.helper.DLTrashHelper;
 import com.liferay.dynamic.data.mapping.service.DDMStructureLinkLocalService;
 import com.liferay.dynamic.data.mapping.service.DDMStructureService;
 import com.liferay.portal.kernel.exception.PortalException;
+import com.liferay.portal.kernel.log.Log;
+import com.liferay.portal.kernel.log.LogFactoryUtil;
 import com.liferay.portal.kernel.portlet.bridges.mvc.MVCRenderCommand;
 import com.liferay.portal.kernel.portlet.bridges.mvc.constants.MVCRenderConstants;
 import com.liferay.portal.kernel.portlet.toolbar.contributor.PortletToolbarContributor;
@@ -27,6 +30,7 @@ import com.liferay.portal.kernel.repository.Repository;
 import com.liferay.portal.kernel.repository.RepositoryProviderUtil;
 import com.liferay.portal.kernel.repository.model.Folder;
 import com.liferay.portal.kernel.servlet.SessionErrors;
+import com.liferay.portal.kernel.theme.ThemeDisplay;
 import com.liferay.portal.kernel.util.ParamUtil;
 import com.liferay.portal.kernel.util.Portal;
 import com.liferay.portal.kernel.util.WebKeys;
@@ -126,18 +130,43 @@ public class DLViewMVCRenderCommand extends BaseFolderMVCRenderCommand {
 		return _dlAppService.getFolder(folderId);
 	}
 
-	private boolean _pingFolderRepository(
-			RenderRequest renderRequest, RenderResponse renderResponse)
-		throws IOException, PortalException {
+	private long _getPingFolderId(RenderRequest renderRequest)
+		throws PortalException {
 
 		String mvcRenderCommandName = ParamUtil.getString(
 			renderRequest, "mvcRenderCommandName");
 
-		if (!mvcRenderCommandName.equals("/document_library/view_folder")) {
-			return false;
+		if (mvcRenderCommandName.equals("/document_library/view_folder")) {
+			return ParamUtil.getLong(renderRequest, "folderId");
 		}
 
-		long folderId = ParamUtil.getLong(renderRequest, "folderId");
+		ThemeDisplay themeDisplay = (ThemeDisplay)renderRequest.getAttribute(
+			WebKeys.THEME_DISPLAY);
+
+		if (!themeDisplay.isSignedIn() ||
+			(ParamUtil.getLong(renderRequest, "folderId") > 0)) {
+
+			return DLFolderConstants.DEFAULT_PARENT_FOLDER_ID;
+		}
+
+		try {
+			return ActionUtil.getRootFolderId(
+				_portal.getHttpServletRequest(renderRequest));
+		}
+		catch (NoSuchFolderException noSuchFolderException) {
+			if (_log.isDebugEnabled()) {
+				_log.debug(noSuchFolderException);
+			}
+
+			return DLFolderConstants.DEFAULT_PARENT_FOLDER_ID;
+		}
+	}
+
+	private boolean _pingFolderRepository(
+			RenderRequest renderRequest, RenderResponse renderResponse)
+		throws IOException, PortalException {
+
+		long folderId = _getPingFolderId(renderRequest);
 
 		if (folderId == DLFolderConstants.DEFAULT_PARENT_FOLDER_ID) {
 			return false;
@@ -167,6 +196,9 @@ public class DLViewMVCRenderCommand extends BaseFolderMVCRenderCommand {
 
 		return false;
 	}
+
+	private static final Log _log = LogFactoryUtil.getLog(
+		DLViewMVCRenderCommand.class);
 
 	@Reference
 	private DDMStructureLinkLocalService _ddmStructureLinkLocalService;
