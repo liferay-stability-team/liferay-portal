@@ -7,6 +7,7 @@ package com.liferay.object.internal.related.models;
 
 import com.liferay.object.constants.ObjectRelationshipConstants;
 import com.liferay.object.exception.RequiredObjectRelationshipException;
+import com.liferay.object.internal.related.models.util.ObjectRelatedModelsProviderUtil;
 import com.liferay.object.model.ObjectDefinition;
 import com.liferay.object.model.ObjectEntry;
 import com.liferay.object.model.ObjectField;
@@ -70,10 +71,8 @@ public class ObjectEntry1toMObjectRelatedModelsProviderImpl
 				deletionType,
 				ObjectRelationshipConstants.DELETION_TYPE_CASCADE)) {
 
-			for (ObjectEntry objectEntry : relatedModels) {
-				_objectEntryService.deleteObjectEntry(
-					objectEntry.getObjectEntryId());
-			}
+			ObjectRelatedModelsProviderUtil.deleteObjectEntries(
+				relatedModels, _objectEntryService);
 		}
 		else if (Objects.equals(
 					deletionType,
@@ -218,10 +217,8 @@ public class ObjectEntry1toMObjectRelatedModelsProviderImpl
 				deletionType,
 				ObjectRelationshipConstants.DELETION_TYPE_CASCADE)) {
 
-			for (ObjectEntry objectEntry : relatedModels) {
-				_objectEntryService.moveObjectEntryToTrash(
-					objectEntry, new ServiceContext());
-			}
+			ObjectRelatedModelsProviderUtil.moveObjectEntriesToTrash(
+				relatedModels, _objectEntryService);
 		}
 		else if (Objects.equals(
 					deletionType,
@@ -244,18 +241,11 @@ public class ObjectEntry1toMObjectRelatedModelsProviderImpl
 			return;
 		}
 
-		for (ObjectEntry objectEntry :
-				getRelatedModels(
-					groupId, objectRelationshipId, null, false, primaryKey,
-					null, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null)) {
-
-			if (!objectEntry.isInTrash()) {
-				continue;
-			}
-
-			_objectEntryService.restoreObjectEntryFromTrash(
-				objectEntry, new ServiceContext());
-		}
+		ObjectRelatedModelsProviderUtil.restoreObjectEntriesFromTrash(
+			getRelatedModels(
+				groupId, objectRelationshipId, null, false, primaryKey, null,
+				QueryUtil.ALL_POS, QueryUtil.ALL_POS, null),
+			_objectEntryService);
 	}
 
 	private final String _className;

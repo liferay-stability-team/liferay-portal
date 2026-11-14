@@ -9,6 +9,7 @@ import com.liferay.object.constants.ObjectDefinitionConstants;
 import com.liferay.object.constants.ObjectRelationshipConstants;
 import com.liferay.object.exception.RequiredObjectRelationshipException;
 import com.liferay.object.internal.entry.util.ObjectEntrySearchUtil;
+import com.liferay.object.internal.related.models.util.ObjectRelatedModelsProviderUtil;
 import com.liferay.object.internal.security.permission.util.ObjectEntryPermissionUtil;
 import com.liferay.object.model.ObjectDefinition;
 import com.liferay.object.model.ObjectEntry;
@@ -108,9 +109,8 @@ public class SystemObject1toMObjectRelatedModelsProviderImpl
 				deletionType,
 				ObjectRelationshipConstants.DELETION_TYPE_CASCADE)) {
 
-			for (BaseModel<T> baseModel : relatedModels) {
-				systemObjectDefinitionManager.deleteBaseModel(baseModel);
-			}
+			ObjectRelatedModelsProviderUtil.deleteBaseModels(
+				relatedModels, systemObjectDefinitionManager);
 		}
 		else if (Objects.equals(
 					deletionType,

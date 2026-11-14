@@ -7,6 +7,7 @@ package com.liferay.object.internal.related.models;
 
 import com.liferay.object.constants.ObjectRelationshipConstants;
 import com.liferay.object.exception.RequiredObjectRelationshipException;
+import com.liferay.object.internal.related.models.util.ObjectRelatedModelsProviderUtil;
 import com.liferay.object.model.ObjectDefinition;
 import com.liferay.object.model.ObjectEntry;
 import com.liferay.object.model.ObjectRelationship;
@@ -17,7 +18,6 @@ import com.liferay.petra.sql.dsl.expression.Predicate;
 import com.liferay.portal.kernel.dao.orm.QueryUtil;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.search.Sort;
-import com.liferay.portal.kernel.service.ServiceContext;
 
 import java.util.List;
 import java.util.Objects;
@@ -76,10 +76,8 @@ public class ObjectEntryMtoMObjectRelatedModelsProviderImpl
 				ObjectRelationshipConstants.DELETION_TYPE_CASCADE) &&
 			!objectRelationship.isReverse()) {
 
-			for (ObjectEntry objectEntry : relatedModels) {
-				_objectEntryService.deleteObjectEntry(
-					objectEntry.getObjectEntryId());
-			}
+			ObjectRelatedModelsProviderUtil.deleteObjectEntries(
+				relatedModels, _objectEntryService);
 		}
 	}
 
@@ -202,10 +200,8 @@ public class ObjectEntryMtoMObjectRelatedModelsProviderImpl
 				ObjectRelationshipConstants.DELETION_TYPE_CASCADE) &&
 			!objectRelationship.isReverse()) {
 
-			for (ObjectEntry objectEntry : relatedModels) {
-				_objectEntryService.moveObjectEntryToTrash(
-					objectEntry, new ServiceContext());
-			}
+			ObjectRelatedModelsProviderUtil.moveObjectEntriesToTrash(
+				relatedModels, _objectEntryService);
 		}
 	}
 
@@ -227,18 +223,11 @@ public class ObjectEntryMtoMObjectRelatedModelsProviderImpl
 			return;
 		}
 
-		for (ObjectEntry objectEntry :
-				getRelatedModels(
-					groupId, objectRelationshipId, null, false, primaryKey,
-					null, QueryUtil.ALL_POS, QueryUtil.ALL_POS, null)) {
-
-			if (!objectEntry.isInTrash()) {
-				continue;
-			}
-
-			_objectEntryService.restoreObjectEntryFromTrash(
-				objectEntry, new ServiceContext());
-		}
+		ObjectRelatedModelsProviderUtil.restoreObjectEntriesFromTrash(
+			getRelatedModels(
+				groupId, objectRelationshipId, null, false, primaryKey, null,
+				QueryUtil.ALL_POS, QueryUtil.ALL_POS, null),
+			_objectEntryService);
 	}
 
 	private final String _className;
