@@ -79,6 +79,34 @@ public class ExtRepositoryAdapterTest {
 	}
 
 	@Test
+	public void testCheckAssetEntry() throws Exception {
+		_testCheckAssetEntry(new RuntimeException(), 1, 0);
+		_testCheckAssetEntry(new RuntimeException(), 2, 1);
+
+		RuntimeException runtimeException1 = new RuntimeException();
+
+		try {
+			_testCheckAssetEntry(runtimeException1, 2, 2);
+
+			Assert.fail();
+		}
+		catch (RuntimeException runtimeException2) {
+			Assert.assertSame(runtimeException1, runtimeException2);
+		}
+
+		PortalException portalException1 = new PortalException();
+
+		try {
+			_testCheckAssetEntry(portalException1, 1, 1);
+
+			Assert.fail();
+		}
+		catch (PortalException portalException2) {
+			Assert.assertSame(portalException1, portalException2);
+		}
+	}
+
+	@Test
 	public void testGetFileEntries() throws Exception {
 		ExtRepository extRepository = Mockito.mock(ExtRepository.class);
 		ExtRepositoryFileEntry extRepositoryFileEntry1 =
@@ -202,6 +230,49 @@ public class ExtRepositoryAdapterTest {
 		);
 
 		return extRepositoryFileEntry;
+	}
+
+	private void _testCheckAssetEntry(
+			Exception exception, int expectedCalls, int failures)
+		throws Exception {
+
+		ExtRepositoryAdapter extRepositoryAdapter = new ExtRepositoryAdapter(
+			Mockito.mock(ExtRepository.class));
+
+		DLAppHelperLocalService dlAppHelperLocalService = Mockito.mock(
+			DLAppHelperLocalService.class);
+		ExtRepositoryFileEntryAdapter extRepositoryFileEntryAdapter =
+			Mockito.mock(ExtRepositoryFileEntryAdapter.class);
+
+		int[] calls = new int[1];
+
+		Mockito.doAnswer(
+			invocationOnMock -> {
+				if (calls[0]++ < failures) {
+					throw exception;
+				}
+
+				return null;
+			}
+		).when(
+			dlAppHelperLocalService
+		).checkAssetEntry(
+			Mockito.anyLong(), Mockito.eq(extRepositoryFileEntryAdapter),
+			Mockito.any()
+		);
+
+		extRepositoryAdapter.setDLAppHelperLocalService(
+			dlAppHelperLocalService);
+
+		try {
+			ReflectionTestUtil.invoke(
+				extRepositoryAdapter, "_checkAssetEntry",
+				new Class<?>[] {ExtRepositoryFileEntryAdapter.class},
+				extRepositoryFileEntryAdapter);
+		}
+		finally {
+			Assert.assertEquals(expectedCalls, calls[0]);
+		}
 	}
 
 	private void _testGetPassword(String expectedPassword, String password) {
