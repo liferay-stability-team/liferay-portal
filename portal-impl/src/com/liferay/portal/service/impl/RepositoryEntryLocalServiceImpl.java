@@ -95,6 +95,23 @@ public class RepositoryEntryLocalServiceImpl
 			return repositoryEntry;
 		}
 
+		try {
+			return repositoryEntryLocalService.addRepositoryEntry(
+				userId, groupId, repositoryId, objectId, new ServiceContext());
+		}
+		catch (Exception exception) {
+			if (_log.isDebugEnabled()) {
+				_log.debug(exception);
+			}
+		}
+
+		repositoryEntry = repositoryEntryPersistence.fetchByR_M(
+			repositoryId, objectId, false);
+
+		if (repositoryEntry != null) {
+			return repositoryEntry;
+		}
+
 		return repositoryEntryLocalService.addRepositoryEntry(
 			userId, groupId, repositoryId, objectId, new ServiceContext());
 	}

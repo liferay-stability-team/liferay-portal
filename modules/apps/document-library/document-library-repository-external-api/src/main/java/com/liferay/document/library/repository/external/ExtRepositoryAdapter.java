@@ -1189,9 +1189,20 @@ public class ExtRepositoryAdapter extends BaseRepositoryImpl {
 			ExtRepositoryFileEntryAdapter extRepositoryFileEntryAdapter)
 		throws PortalException {
 
-		dlAppHelperLocalService.checkAssetEntry(
-			PrincipalThreadLocal.getUserId(), extRepositoryFileEntryAdapter,
-			extRepositoryFileEntryAdapter.getFileVersion());
+		try {
+			dlAppHelperLocalService.checkAssetEntry(
+				PrincipalThreadLocal.getUserId(), extRepositoryFileEntryAdapter,
+				extRepositoryFileEntryAdapter.getFileVersion());
+		}
+		catch (RuntimeException runtimeException) {
+			if (_log.isDebugEnabled()) {
+				_log.debug(runtimeException);
+			}
+
+			dlAppHelperLocalService.checkAssetEntry(
+				PrincipalThreadLocal.getUserId(), extRepositoryFileEntryAdapter,
+				extRepositoryFileEntryAdapter.getFileVersion());
+		}
 	}
 
 	private User _fetchGuestUser() {
