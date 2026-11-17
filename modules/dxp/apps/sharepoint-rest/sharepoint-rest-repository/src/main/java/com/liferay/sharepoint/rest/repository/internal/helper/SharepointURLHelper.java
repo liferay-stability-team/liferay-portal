@@ -5,6 +5,7 @@
 
 package com.liferay.sharepoint.rest.repository.internal.helper;
 
+import com.liferay.document.library.kernel.model.DLVersionNumberIncrease;
 import com.liferay.document.library.repository.external.ExtRepositoryFileEntry;
 import com.liferay.document.library.repository.external.ExtRepositoryObject;
 import com.liferay.document.library.repository.external.ExtRepositoryObjectType;
@@ -51,13 +52,16 @@ public class SharepointURLHelper {
 	}
 
 	public String getCheckInFileURL(
-		String extRepositoryFileEntryKey, boolean createMajorVersion,
-		String changeLog) {
+		String extRepositoryFileEntryKey,
+		DLVersionNumberIncrease dlVersionNumberIncrease, String changeLog) {
 
 		int checkInType = 0;
 
-		if (createMajorVersion) {
+		if (dlVersionNumberIncrease == DLVersionNumberIncrease.MAJOR) {
 			checkInType = 1;
+		}
+		else if (dlVersionNumberIncrease == DLVersionNumberIncrease.NONE) {
+			checkInType = 2;
 		}
 
 		return String.format(
@@ -121,7 +125,7 @@ public class SharepointURLHelper {
 
 		return String.format(
 			"%s/_api/web/GetFileByServerRelativePath(decodedUrl='%s')" +
-				"/Versions(%s)",
+				"/Versions(%s)/$value",
 			_siteAbsoluteURL,
 			HttpComponentsUtil.encodePath(
 				extRepositoryFileEntry.getExtRepositoryModelKey()),
@@ -156,6 +160,13 @@ public class SharepointURLHelper {
 			_FIELDS_SELECTED_FOLDER, _FIELDS_EXPANDED_FOLDER);
 	}
 
+	public String getListURL(String libraryPath) {
+		return String.format(
+			"%s/_api/web/GetList('%s/%s')?$select=EnableMinorVersions",
+			_siteAbsoluteURL, HttpComponentsUtil.getPath(_siteAbsoluteURL),
+			HttpComponentsUtil.encodePath(libraryPath));
+	}
+
 	public String getMoveFileURL(
 		String extRepositoryFileEntryKey, String extRepositoryFolderKey,
 		String title) {
@@ -184,10 +195,10 @@ public class SharepointURLHelper {
 
 		return String.format(
 			"%s/_api/web/GetFolderByServerRelativePath(decodedUrl='%s')" +
-				"?$select=%s&$expand=%s",
+				"?$select=%s&$expand=ListItemAllFields",
 			_siteAbsoluteURL,
 			HttpComponentsUtil.encodePath(extRepositoryObjectKey),
-			_FIELDS_SELECTED_FOLDER, _FIELDS_EXPANDED_FOLDER);
+			_FIELDS_SELECTED_FOLDER_OBJECT);
 	}
 
 	public <T extends ExtRepositoryObject> String getObjectsCountURL(
@@ -235,7 +246,8 @@ public class SharepointURLHelper {
 	private static final String _FIELDS_EXPANDED_FILE = StringUtil.merge(
 		Arrays.asList("Author", "CheckedOutByUser", "ListItemAllFields"));
 
-	private static final String _FIELDS_EXPANDED_FOLDER = "ListItemAllFields";
+	private static final String _FIELDS_EXPANDED_FOLDER = StringUtil.merge(
+		Arrays.asList("Files", "Folders", "ListItemAllFields"));
 
 	private static final String _FIELDS_SELECTED_FILE = StringUtil.merge(
 		Arrays.asList(
@@ -246,8 +258,15 @@ public class SharepointURLHelper {
 
 	private static final String _FIELDS_SELECTED_FOLDER = StringUtil.merge(
 		Arrays.asList(
-			"Name", "ListItemAllFields/EffectiveBasePermissions",
-			"ServerRelativeUrl", "TimeCreated", "TimeLastModified"));
+			"Files/Name", "Folders/Name", "Name",
+			"ListItemAllFields/EffectiveBasePermissions", "ServerRelativeUrl",
+			"TimeCreated", "TimeLastModified"));
+
+	private static final String _FIELDS_SELECTED_FOLDER_OBJECT =
+		StringUtil.merge(
+			Arrays.asList(
+				"Name", "ListItemAllFields/EffectiveBasePermissions",
+				"ServerRelativeUrl", "TimeCreated", "TimeLastModified"));
 
 	private final String _resultsSourceId;
 	private final String _siteAbsoluteURL;

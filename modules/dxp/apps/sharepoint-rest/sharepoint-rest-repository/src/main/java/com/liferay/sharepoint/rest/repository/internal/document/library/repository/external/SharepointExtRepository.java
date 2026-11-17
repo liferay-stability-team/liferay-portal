@@ -6,6 +6,7 @@
 package com.liferay.sharepoint.rest.repository.internal.document.library.repository.external;
 
 import com.liferay.document.library.kernel.exception.SourceFileNameException;
+import com.liferay.document.library.kernel.model.DLVersionNumberIncrease;
 import com.liferay.document.library.repository.authorization.oauth2.Token;
 import com.liferay.document.library.repository.authorization.oauth2.TokenStore;
 import com.liferay.document.library.repository.external.CredentialsProvider;
@@ -149,9 +150,26 @@ public class SharepointExtRepository implements ExtRepository {
 			String changeLog)
 		throws PortalException {
 
+		DLVersionNumberIncrease dlVersionNumberIncrease =
+			DLVersionNumberIncrease.MINOR;
+
+		if (createMajorVersion) {
+			dlVersionNumberIncrease = DLVersionNumberIncrease.MAJOR;
+		}
+
+		checkInExtRepositoryFileEntry(
+			extRepositoryFileEntryKey, dlVersionNumberIncrease, changeLog);
+	}
+
+	@Override
+	public void checkInExtRepositoryFileEntry(
+			String extRepositoryFileEntryKey,
+			DLVersionNumberIncrease dlVersionNumberIncrease, String changeLog)
+		throws PortalException {
+
 		try {
 			String url = _sharepointURLHelper.getCheckInFileURL(
-				extRepositoryFileEntryKey, createMajorVersion, changeLog);
+				extRepositoryFileEntryKey, dlVersionNumberIncrease, changeLog);
 
 			_post(url);
 		}
@@ -283,13 +301,30 @@ public class SharepointExtRepository implements ExtRepository {
 			ExtRepositoryFileEntry extRepositoryFileEntry, String version)
 		throws PortalException {
 
+		String extRepositoryFileVersionKey = StringBundler.concat(
+			extRepositoryFileEntry.getExtRepositoryModelKey(), StringPool.COLON,
+			version);
+
+		ExtRepositoryFileVersion latestExtRepositoryFileVersion =
+			getLatestExtRepositoryFileVersion(extRepositoryFileEntry);
+
+		if (_isExtRepositoryFileVersion(
+				latestExtRepositoryFileVersion, extRepositoryFileVersionKey,
+				version)) {
+
+			return latestExtRepositoryFileVersion;
+		}
+
 		List<ExtRepositoryFileVersion> extRepositoryFileVersions =
 			getExtRepositoryFileVersions(extRepositoryFileEntry);
 
 		for (ExtRepositoryFileVersion extRepositoryFileVersion :
 				extRepositoryFileVersions) {
 
-			if (version.equals(extRepositoryFileVersion.getVersion())) {
+			if (_isExtRepositoryFileVersion(
+					extRepositoryFileVersion, extRepositoryFileVersionKey,
+					version)) {
+
 				return extRepositoryFileVersion;
 			}
 		}
@@ -480,6 +515,16 @@ public class SharepointExtRepository implements ExtRepository {
 	}
 
 	@Override
+	public ExtRepositoryFileVersion getLatestExtRepositoryFileVersion(
+		ExtRepositoryFileEntry extRepositoryFileEntry) {
+
+		SharepointModel sharepointModel =
+			(SharepointModel)extRepositoryFileEntry;
+
+		return sharepointModel.asFileVersion();
+	}
+
+	@Override
 	public String getLiferayLogin(String extRepositoryLogin) {
 		return String.valueOf(PrincipalThreadLocal.getUserId());
 	}
@@ -540,6 +585,20 @@ public class SharepointExtRepository implements ExtRepository {
 		_sharepointServerResponseConverter =
 			new SharepointServerResponseConverter(
 				_sharepointURLHelper, this, _siteAbsoluteURL, _libraryPath);
+	}
+
+	public boolean isMinorVersionEnabled() throws PortalException {
+		try {
+			JSONObject jsonObject = _getJSONObject(
+				_sharepointURLHelper.getListURL(_libraryPath));
+
+			JSONObject dJSONObject = jsonObject.getJSONObject("d");
+
+			return dJSONObject.getBoolean("EnableMinorVersions");
+		}
+		catch (JSONException | UnirestException exception) {
+			throw new PortalException(exception);
+		}
 	}
 
 	@Override
@@ -826,6 +885,20 @@ public class SharepointExtRepository implements ExtRepository {
 
 			throw new PrincipalException(message);
 		}
+	}
+
+	private boolean _isExtRepositoryFileVersion(
+		ExtRepositoryFileVersion extRepositoryFileVersion,
+		String extRepositoryFileVersionKey, String version) {
+
+		if (extRepositoryFileVersionKey.equals(
+				extRepositoryFileVersion.getExtRepositoryModelKey()) ||
+			version.equals(extRepositoryFileVersion.getVersion())) {
+
+			return true;
+		}
+
+		return false;
 	}
 
 	private void _post(String url) throws PortalException, UnirestException {

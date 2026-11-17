@@ -5,6 +5,7 @@
 
 package com.liferay.sharepoint.rest.repository.internal.document.library.repository.external;
 
+import com.liferay.document.library.kernel.model.DLVersionNumberIncrease;
 import com.liferay.document.library.repository.external.CredentialsProvider;
 import com.liferay.document.library.repository.external.ExtRepository;
 import com.liferay.document.library.repository.external.ExtRepositoryFileEntry;
@@ -16,10 +17,13 @@ import com.liferay.document.library.repository.external.ExtRepositoryObjectType;
 import com.liferay.document.library.repository.external.ExtRepositorySearchResult;
 import com.liferay.document.library.repository.external.search.ExtRepositoryQueryMapper;
 import com.liferay.petra.lang.CentralizedThreadLocal;
+import com.liferay.petra.string.CharPool;
 import com.liferay.portal.kernel.exception.PortalException;
 import com.liferay.portal.kernel.search.Query;
 import com.liferay.portal.kernel.search.SearchContext;
+import com.liferay.portal.kernel.util.ListUtil;
 import com.liferay.portal.kernel.util.UnicodeProperties;
+import com.liferay.sharepoint.rest.repository.internal.document.library.repository.external.model.SharepointFolder;
 
 import java.io.InputStream;
 
@@ -43,10 +47,11 @@ public class SharepointCachingExtRepository implements ExtRepository {
 			InputStream inputStream)
 		throws PortalException {
 
-		Map<String, List<ExtRepositoryObject>> extRepositoryObjectsCache =
-			_extRepositoryObjectsCache.get();
+		Map<String, List<ExtRepositoryFileEntry>>
+			extRepositoryFileEntriesCache =
+				_extRepositoryFileEntriesCache.get();
 
-		extRepositoryObjectsCache.remove(extRepositoryParentFolderKey);
+		extRepositoryFileEntriesCache.remove(extRepositoryParentFolderKey);
 
 		ExtRepositoryFileEntry extRepositoryFileEntry =
 			_extRepository.addExtRepositoryFileEntry(
@@ -55,6 +60,8 @@ public class SharepointCachingExtRepository implements ExtRepository {
 
 		Map<String, ExtRepositoryObject> extRepositoryObjectCache =
 			_extRepositoryObjectCache.get();
+
+		extRepositoryObjectCache.remove(extRepositoryParentFolderKey);
 
 		extRepositoryObjectCache.put(
 			extRepositoryFileEntry.getExtRepositoryModelKey(),
@@ -69,13 +76,15 @@ public class SharepointCachingExtRepository implements ExtRepository {
 			String description)
 		throws PortalException {
 
-		Map<String, List<ExtRepositoryObject>> extRepositoryObjectsCache =
-			_extRepositoryObjectsCache.get();
+		Map<String, List<ExtRepositoryFolder>> extRepositoryFoldersCache =
+			_extRepositoryFoldersCache.get();
 
-		extRepositoryObjectsCache.remove(extRepositoryParentFolderKey);
+		extRepositoryFoldersCache.remove(extRepositoryParentFolderKey);
 
 		Map<String, ExtRepositoryObject> extRepositoryObjectCache =
 			_extRepositoryObjectCache.get();
+
+		extRepositoryObjectCache.remove(extRepositoryParentFolderKey);
 
 		ExtRepositoryFolder extRepositoryFolder =
 			_extRepository.addExtRepositoryFolder(
@@ -113,6 +122,23 @@ public class SharepointCachingExtRepository implements ExtRepository {
 			String changeLog)
 		throws PortalException {
 
+		DLVersionNumberIncrease dlVersionNumberIncrease =
+			DLVersionNumberIncrease.MINOR;
+
+		if (createMajorVersion) {
+			dlVersionNumberIncrease = DLVersionNumberIncrease.MAJOR;
+		}
+
+		checkInExtRepositoryFileEntry(
+			extRepositoryFileEntryKey, dlVersionNumberIncrease, changeLog);
+	}
+
+	@Override
+	public void checkInExtRepositoryFileEntry(
+			String extRepositoryFileEntryKey,
+			DLVersionNumberIncrease dlVersionNumberIncrease, String changeLog)
+		throws PortalException {
+
 		Map<String, ExtRepositoryObject> extRepositoryObjectCache =
 			_extRepositoryObjectCache.get();
 
@@ -125,7 +151,7 @@ public class SharepointCachingExtRepository implements ExtRepository {
 		extRepositoryFileVersionCache.remove(extRepositoryFileEntryKey);
 
 		_extRepository.checkInExtRepositoryFileEntry(
-			extRepositoryFileEntryKey, createMajorVersion, changeLog);
+			extRepositoryFileEntryKey, dlVersionNumberIncrease, changeLog);
 	}
 
 	@Override
@@ -171,11 +197,19 @@ public class SharepointCachingExtRepository implements ExtRepository {
 			_extRepositoryObjectCache.get();
 
 		extRepositoryObjectCache.remove(extRepositoryObjectKey);
+		extRepositoryObjectCache.remove(
+			_getParentFolderKey(extRepositoryObjectKey));
 
-		Map<String, List<ExtRepositoryObject>> extRepositoryObjectsCache =
-			_extRepositoryObjectsCache.get();
+		Map<String, List<ExtRepositoryFileEntry>>
+			extRepositoryFileEntriesCache =
+				_extRepositoryFileEntriesCache.get();
 
-		extRepositoryObjectsCache.clear();
+		extRepositoryFileEntriesCache.clear();
+
+		Map<String, List<ExtRepositoryFolder>> extRepositoryFoldersCache =
+			_extRepositoryFoldersCache.get();
+
+		extRepositoryFoldersCache.clear();
 
 		Map<String, ExtRepositoryFolder> extRepositoryParentFolderCache =
 			_extRepositoryParentFolderCache.get();
@@ -302,32 +336,27 @@ public class SharepointCachingExtRepository implements ExtRepository {
 			String extRepositoryFolderKey)
 		throws PortalException {
 
-		Map<String, List<ExtRepositoryObject>> extRepositoryObjectsCache =
-			_extRepositoryObjectsCache.get();
-
-		List<T> extRepositoryObjects = (List<T>)extRepositoryObjectsCache.get(
-			extRepositoryFolderKey);
-
-		if (extRepositoryObjects != null) {
-			return extRepositoryObjects;
+		if (extRepositoryObjectType == ExtRepositoryObjectType.FILE) {
+			return (List<T>)_getExtRepositoryObjects(
+				extRepositoryFolderKey, ExtRepositoryObjectType.FILE,
+				_extRepositoryFileEntriesCache);
 		}
 
-		extRepositoryObjects = _extRepository.getExtRepositoryObjects(
-			extRepositoryObjectType, extRepositoryFolderKey);
+		if (extRepositoryObjectType == ExtRepositoryObjectType.FOLDER) {
+			return (List<T>)_getExtRepositoryObjects(
+				extRepositoryFolderKey, ExtRepositoryObjectType.FOLDER,
+				_extRepositoryFoldersCache);
+		}
 
-		Map<String, ExtRepositoryObject> extRepositoryObjectCache =
-			_extRepositoryObjectCache.get();
+		List<ExtRepositoryFileEntry> extRepositoryFileEntries =
+			getExtRepositoryObjects(
+				ExtRepositoryObjectType.FILE, extRepositoryFolderKey);
+		List<ExtRepositoryFolder> extRepositoryFolders =
+			getExtRepositoryObjects(
+				ExtRepositoryObjectType.FOLDER, extRepositoryFolderKey);
 
-		extRepositoryObjects.forEach(
-			extRepositoryObject -> extRepositoryObjectCache.put(
-				extRepositoryObject.getExtRepositoryModelKey(),
-				extRepositoryObject));
-
-		extRepositoryObjectsCache.put(
-			extRepositoryFolderKey,
-			(List<ExtRepositoryObject>)extRepositoryObjects);
-
-		return extRepositoryObjects;
+		return (List<T>)ListUtil.concat(
+			extRepositoryFileEntries, extRepositoryFolders);
 	}
 
 	@Override
@@ -336,6 +365,24 @@ public class SharepointCachingExtRepository implements ExtRepository {
 				extRepositoryObjectType,
 			String extRepositoryFolderKey)
 		throws PortalException {
+
+		Map<String, ExtRepositoryObject> extRepositoryObjectCache =
+			_extRepositoryObjectCache.get();
+
+		ExtRepositoryObject extRepositoryObject = extRepositoryObjectCache.get(
+			extRepositoryFolderKey);
+
+		if (extRepositoryObject instanceof SharepointFolder) {
+			SharepointFolder sharepointFolder =
+				(SharepointFolder)extRepositoryObject;
+
+			Integer childCount = sharepointFolder.getChildCount(
+				extRepositoryObjectType);
+
+			if (childCount != null) {
+				return childCount;
+			}
+		}
 
 		return _extRepository.getExtRepositoryObjectsCount(
 			extRepositoryObjectType, extRepositoryFolderKey);
@@ -349,22 +396,44 @@ public class SharepointCachingExtRepository implements ExtRepository {
 		Map<String, ExtRepositoryFolder> extRepositoryParentFolderCache =
 			_extRepositoryParentFolderCache.get();
 
+		String parentFolderKey = _getParentFolderKey(
+			extRepositoryObject.getExtRepositoryModelKey());
+
 		ExtRepositoryFolder extRepositoryParentFolder =
-			extRepositoryParentFolderCache.get(
-				extRepositoryObject.getExtRepositoryModelKey());
+			extRepositoryParentFolderCache.get(parentFolderKey);
 
 		if (extRepositoryParentFolder != null) {
 			return extRepositoryParentFolder;
 		}
 
-		extRepositoryParentFolder = _extRepository.getExtRepositoryParentFolder(
-			extRepositoryObject);
+		if (!parentFolderKey.equals(_extRepository.getRootFolderKey())) {
+			Map<String, ExtRepositoryObject> extRepositoryObjectCache =
+				_extRepositoryObjectCache.get();
+
+			extRepositoryParentFolder =
+				(ExtRepositoryFolder)extRepositoryObjectCache.get(
+					parentFolderKey);
+		}
+
+		if (extRepositoryParentFolder == null) {
+			extRepositoryParentFolder =
+				_extRepository.getExtRepositoryParentFolder(
+					extRepositoryObject);
+		}
 
 		extRepositoryParentFolderCache.put(
-			extRepositoryObject.getExtRepositoryModelKey(),
-			extRepositoryParentFolder);
+			parentFolderKey, extRepositoryParentFolder);
 
 		return extRepositoryParentFolder;
+	}
+
+	@Override
+	public ExtRepositoryFileVersion getLatestExtRepositoryFileVersion(
+			ExtRepositoryFileEntry extRepositoryFileEntry)
+		throws PortalException {
+
+		return _extRepository.getLatestExtRepositoryFileVersion(
+			extRepositoryFileEntry);
 	}
 
 	@Override
@@ -421,11 +490,20 @@ public class SharepointCachingExtRepository implements ExtRepository {
 			_extRepositoryObjectCache.get();
 
 		extRepositoryObjectCache.remove(extRepositoryObjectKey);
+		extRepositoryObjectCache.remove(
+			_getParentFolderKey(extRepositoryObjectKey));
+		extRepositoryObjectCache.remove(newExtRepositoryFolderKey);
 
-		Map<String, List<ExtRepositoryObject>> extRepositoryObjectsCache =
-			_extRepositoryObjectsCache.get();
+		Map<String, List<ExtRepositoryFileEntry>>
+			extRepositoryFileEntriesCache =
+				_extRepositoryFileEntriesCache.get();
 
-		extRepositoryObjectsCache.remove(extRepositoryObjectKey);
+		extRepositoryFileEntriesCache.remove(extRepositoryObjectKey);
+
+		Map<String, List<ExtRepositoryFolder>> extRepositoryFoldersCache =
+			_extRepositoryFoldersCache.get();
+
+		extRepositoryFoldersCache.remove(extRepositoryObjectKey);
 
 		Map<String, List<ExtRepositoryFileVersion>>
 			extRepositoryFileVersionCache =
@@ -464,10 +542,11 @@ public class SharepointCachingExtRepository implements ExtRepository {
 		extRepositoryObjectCache.put(
 			extRepositoryFileEntryKey, extRepositoryFileEntry);
 
-		Map<String, List<ExtRepositoryObject>> extRepositoryObjectsCache =
-			_extRepositoryObjectsCache.get();
+		Map<String, List<ExtRepositoryFileEntry>>
+			extRepositoryFileEntriesCache =
+				_extRepositoryFileEntriesCache.get();
 
-		extRepositoryObjectsCache.clear();
+		extRepositoryFileEntriesCache.clear();
 
 		Map<String, List<ExtRepositoryFileVersion>>
 			extRepositoryFileVersionCache =
@@ -478,16 +557,62 @@ public class SharepointCachingExtRepository implements ExtRepository {
 		return extRepositoryFileEntry;
 	}
 
+	private <T extends ExtRepositoryObject> List<T> _getExtRepositoryObjects(
+			String extRepositoryFolderKey,
+			ExtRepositoryObjectType<T> extRepositoryObjectType,
+			ThreadLocal<Map<String, List<T>>> threadLocal)
+		throws PortalException {
+
+		Map<String, List<T>> extRepositoryObjectsCache = threadLocal.get();
+
+		List<T> extRepositoryObjects = extRepositoryObjectsCache.get(
+			extRepositoryFolderKey);
+
+		if (extRepositoryObjects != null) {
+			return extRepositoryObjects;
+		}
+
+		extRepositoryObjects = _extRepository.getExtRepositoryObjects(
+			extRepositoryObjectType, extRepositoryFolderKey);
+
+		Map<String, ExtRepositoryObject> extRepositoryObjectCache =
+			_extRepositoryObjectCache.get();
+
+		for (T extRepositoryObject : extRepositoryObjects) {
+			extRepositoryObjectCache.put(
+				extRepositoryObject.getExtRepositoryModelKey(),
+				extRepositoryObject);
+		}
+
+		extRepositoryObjectsCache.put(
+			extRepositoryFolderKey, extRepositoryObjects);
+
+		return extRepositoryObjects;
+	}
+
+	private String _getParentFolderKey(String extRepositoryModelKey) {
+		int index = extRepositoryModelKey.lastIndexOf(CharPool.SLASH);
+
+		if (index == -1) {
+			return extRepositoryModelKey;
+		}
+
+		return extRepositoryModelKey.substring(0, index);
+	}
+
+	private static final ThreadLocal<Map<String, List<ExtRepositoryFileEntry>>>
+		_extRepositoryFileEntriesCache = new CentralizedThreadLocal<>(
+			"extRepositoryFileEntriesCache", HashMap::new);
 	private static final ThreadLocal
 		<Map<String, List<ExtRepositoryFileVersion>>>
 			_extRepositoryFileVersionCache = new CentralizedThreadLocal<>(
 				"extRepositoryFileVersionCache", HashMap::new);
+	private static final ThreadLocal<Map<String, List<ExtRepositoryFolder>>>
+		_extRepositoryFoldersCache = new CentralizedThreadLocal<>(
+			"extRepositoryFoldersCache", HashMap::new);
 	private static final ThreadLocal<Map<String, ExtRepositoryObject>>
 		_extRepositoryObjectCache = new CentralizedThreadLocal<>(
 			"extRepositoryObjectCache", HashMap::new);
-	private static final ThreadLocal<Map<String, List<ExtRepositoryObject>>>
-		_extRepositoryObjectsCache = new CentralizedThreadLocal<>(
-			"extRepositoryObjectsCache", HashMap::new);
 	private static final ThreadLocal<Map<String, ExtRepositoryFolder>>
 		_extRepositoryParentFolderCache = new CentralizedThreadLocal<>(
 			"extRepositoryParentFolderCache", HashMap::new);
