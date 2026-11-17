@@ -156,6 +156,33 @@ public class SharepointRepositoryAuthorizationCapabilityTest {
 		return layout;
 	}
 
+	private void _assertRenderReadsRepository(
+			Layout layout, MockHttpServletRequest mockHttpServletRequest)
+		throws Exception {
+
+		MockLiferayPortletRenderResponse mockLiferayPortletRenderResponse =
+			new MockLiferayPortletRenderResponse();
+
+		try {
+			_render(
+				layout, mockHttpServletRequest,
+				mockLiferayPortletRenderResponse, true);
+
+			Assert.fail();
+		}
+		catch (RuntimeException runtimeException) {
+			Class<?> clazz = runtimeException.getClass();
+
+			Assert.assertEquals(
+				"com.microsoft.aad.msal4j.MsalClientException",
+				clazz.getName());
+		}
+
+		Assert.assertNull(
+			mockHttpServletRequest.getAttribute(DLFolder.class.getName()));
+		Assert.assertNull(_getRedirectedURL(mockLiferayPortletRenderResponse));
+	}
+
 	private String _getRedirectedURL(
 		MockLiferayPortletRenderResponse mockLiferayPortletRenderResponse) {
 
@@ -359,29 +386,19 @@ public class SharepointRepositoryAuthorizationCapabilityTest {
 		Folder mountFolder = _dlAppLocalService.getMountFolder(
 			_repository.getRepositoryId());
 
-		MockHttpServletRequest mockHttpServletRequest =
+		Layout layout = _addLayout(mountFolder.getExternalReferenceCode());
+
+		_assertRenderReadsRepository(layout, new MockHttpServletRequest());
+
+		MockHttpServletRequest viewFolderMockHttpServletRequest =
 			new MockHttpServletRequest();
-		MockLiferayPortletRenderResponse mockLiferayPortletRenderResponse =
-			new MockLiferayPortletRenderResponse();
 
-		try {
-			_render(
-				_addLayout(mountFolder.getExternalReferenceCode()),
-				mockHttpServletRequest, mockLiferayPortletRenderResponse, true);
+		viewFolderMockHttpServletRequest.addParameter(
+			"folderId", String.valueOf(mountFolder.getFolderId()));
+		viewFolderMockHttpServletRequest.addParameter(
+			"mvcRenderCommandName", "/document_library/view_folder");
 
-			Assert.fail();
-		}
-		catch (RuntimeException runtimeException) {
-			Class<?> clazz = runtimeException.getClass();
-
-			Assert.assertEquals(
-				"com.microsoft.aad.msal4j.MsalClientException",
-				clazz.getName());
-		}
-
-		Assert.assertNull(
-			mockHttpServletRequest.getAttribute(DLFolder.class.getName()));
-		Assert.assertNull(_getRedirectedURL(mockLiferayPortletRenderResponse));
+		_assertRenderReadsRepository(layout, viewFolderMockHttpServletRequest);
 	}
 
 	private void _testAuthorizeWhenUserIsNotSignedIn() throws Exception {
