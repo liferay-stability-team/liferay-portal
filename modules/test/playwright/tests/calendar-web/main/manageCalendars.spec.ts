@@ -160,6 +160,123 @@ test(
 	}
 );
 
+function rgbIntToCss(rgbInt: number): string {
+	return `rgb(${(rgbInt >> 16) & 0xff}, ${(rgbInt >> 8) & 0xff}, ${
+		rgbInt & 0xff
+	})`;
+}
+
+test(
+	'manage calendars list renders each row with its own color',
+	{tag: '@LPD-116783'},
+	async ({apiHelpers, calendarWidgetPage, page, site}) => {
+		const COLOR_PURPLE = 0x9080c7;
+		const COLOR_TEAL = 0x85aaa5;
+		const COLOR_YELLOW = 0xe0c240;
+
+		const tealCalendarName = 'Teal' + getRandomString();
+		const yellowCalendarName = 'Yellow' + getRandomString();
+
+		let defaultRowColorBefore: string;
+		let yellowCalendarId: string;
+
+		const defaultRowColorBox = page
+			.getByRole('row', {name: siteName})
+			.locator('.calendar-portlet-color-box');
+
+		await test.step('Create two site calendars with distinct colors', async () => {
+			const {classNameId} =
+				await apiHelpers.jsonWebServicesClassName.fetchClassName(
+					'com.liferay.portal.kernel.model.Group'
+				);
+
+			const {calendarResourceId} =
+				await apiHelpers.jsonWebServicesCalendarResource.fetchCalendarResource(
+					{
+						classNameId,
+						classPK: site.id,
+					}
+				);
+
+			await apiHelpers.jsonWebServicesCalendar.addCalendar({
+				calendarResourceId,
+				color: COLOR_TEAL,
+				descriptionMap: `{"en_US": "${getRandomString()}"}`,
+				groupId: site.id,
+				nameMap: `{"en_US": "${tealCalendarName}"}`,
+			});
+
+			({calendarId: yellowCalendarId} =
+				await apiHelpers.jsonWebServicesCalendar.addCalendar({
+					calendarResourceId,
+					color: COLOR_YELLOW,
+					descriptionMap: `{"en_US": "${getRandomString()}"}`,
+					groupId: site.id,
+					nameMap: `{"en_US": "${yellowCalendarName}"}`,
+				}));
+
+			await page.reload();
+		});
+
+		await test.step('Open Manage Calendars for the site group', async () => {
+			await calendarWidgetPage.unhideSidebar();
+
+			await calendarWidgetPage.openCalendarGroupActionsDropdownMenu(
+				siteName
+			);
+
+			await calendarWidgetPage.manageCalendarsMenuItem.click();
+		});
+
+		await test.step('Each row shows its own calendar color', async () => {
+			defaultRowColorBefore = await defaultRowColorBox.evaluate(
+				(element) => getComputedStyle(element).backgroundColor
+			);
+
+			expect(defaultRowColorBefore).not.toBe(rgbIntToCss(COLOR_TEAL));
+			expect(defaultRowColorBefore).not.toBe(rgbIntToCss(COLOR_YELLOW));
+
+			await expect(
+				page
+					.getByRole('row', {name: tealCalendarName})
+					.locator('.calendar-portlet-color-box')
+			).toHaveCSS('background-color', rgbIntToCss(COLOR_TEAL));
+
+			await expect(
+				page
+					.getByRole('row', {name: yellowCalendarName})
+					.locator('.calendar-portlet-color-box')
+			).toHaveCSS('background-color', rgbIntToCss(COLOR_YELLOW));
+		});
+
+		await test.step('Updating one row only changes that row', async () => {
+			await apiHelpers.jsonWebServicesCalendar.updateColor({
+				calendarId: yellowCalendarId,
+				color: COLOR_PURPLE,
+			});
+
+			await page.reload();
+
+			await expect(defaultRowColorBox).toHaveCSS(
+				'background-color',
+				defaultRowColorBefore
+			);
+
+			await expect(
+				page
+					.getByRole('row', {name: tealCalendarName})
+					.locator('.calendar-portlet-color-box')
+			).toHaveCSS('background-color', rgbIntToCss(COLOR_TEAL));
+
+			await expect(
+				page
+					.getByRole('row', {name: yellowCalendarName})
+					.locator('.calendar-portlet-color-box')
+			).toHaveCSS('background-color', rgbIntToCss(COLOR_PURPLE));
+		});
+	}
+);
+
 test('color column in manage calendar page is updated when the user changes the calendar color', async ({
 	calendarWidgetPage,
 }) => {

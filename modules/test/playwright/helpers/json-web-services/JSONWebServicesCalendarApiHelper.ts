@@ -61,4 +61,26 @@ export class JSONWebServicesCalendarApiHelper {
 			}
 		);
 	}
+
+	async updateColor({
+		calendarId,
+		color,
+	}: {
+		calendarId: string;
+		color: number;
+	}): Promise<Calendar> {
+		const urlSearchParams = new URLSearchParams();
+
+		urlSearchParams.append('calendarId', calendarId);
+		urlSearchParams.append('color', String(color));
+
+		return await this.apiHelpers.post(
+			`${liferayConfig.environment.baseUrl}${this.basePath}/update-color`,
+			{
+				data: urlSearchParams.toString(),
+				failOnStatusCode: true,
+				headers: await this.apiHelpers.getJSONWebServicesHeaders(),
+			}
+		);
+	}
 }
