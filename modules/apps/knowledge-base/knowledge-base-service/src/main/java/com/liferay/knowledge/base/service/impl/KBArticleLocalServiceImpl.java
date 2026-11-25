@@ -2301,6 +2301,9 @@ public class KBArticleLocalServiceImpl extends KBArticleLocalServiceBaseImpl {
 				).and(
 					KBArticleTable.INSTANCE.latest.eq(Boolean.TRUE)
 				).and(
+					KBArticleTable.INSTANCE.status.neq(
+						WorkflowConstants.STATUS_IN_TRASH)
+				).and(
 					KBArticleTable.INSTANCE.reviewDate.gt(reviewDateGT)
 				).and(
 					KBArticleTable.INSTANCE.reviewDate.lte(reviewDateLTE)
