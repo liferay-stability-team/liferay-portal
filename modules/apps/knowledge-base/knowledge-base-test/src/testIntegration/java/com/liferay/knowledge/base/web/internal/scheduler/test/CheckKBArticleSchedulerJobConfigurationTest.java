@@ -276,27 +276,8 @@ public class CheckKBArticleSchedulerJobConfigurationTest {
 
 	@Test
 	public void testReviewKBArticle() throws Exception {
-		User user = _addUser();
-
-		KBArticle kbArticle = _addKBArticle(
-			null, new Date(System.currentTimeMillis() + (Time.MINUTE * 10)),
-			_getServiceContext(user));
-
-		_kbArticleLocalService.checkKBArticles(_group.getCompanyId());
-
-		Assert.assertEquals(
-			0,
-			_userNotificationEventLocalService.getUserNotificationEventsCount(
-				user.getUserId()));
-
-		kbArticle.setReviewDate(new Date());
-
-		kbArticle = _kbArticleLocalService.updateKBArticle(kbArticle);
-
-		_kbArticleLocalService.checkKBArticles(_group.getCompanyId());
-
-		_assertUserNotificationEvent(
-			kbArticle, "A knowledge base article needs review.", user);
+		_testReviewKBArticle();
+		_testReviewKBArticleWhenKBArticleIsInTrash();
 	}
 
 	@Test
@@ -454,6 +435,52 @@ public class CheckKBArticleSchedulerJobConfigurationTest {
 
 		_assertStatus(approvedKBArticle, WorkflowConstants.STATUS_IN_TRASH);
 		_assertStatus(draftKBArticle, WorkflowConstants.STATUS_IN_TRASH);
+	}
+
+	private void _testReviewKBArticle() throws Exception {
+		User user = _addUser();
+
+		KBArticle kbArticle = _addKBArticle(
+			null, new Date(System.currentTimeMillis() + (Time.MINUTE * 10)),
+			_getServiceContext(user));
+
+		_kbArticleLocalService.checkKBArticles(_group.getCompanyId());
+
+		Assert.assertEquals(
+			0,
+			_userNotificationEventLocalService.getUserNotificationEventsCount(
+				user.getUserId()));
+
+		kbArticle.setReviewDate(new Date());
+
+		kbArticle = _kbArticleLocalService.updateKBArticle(kbArticle);
+
+		_kbArticleLocalService.checkKBArticles(_group.getCompanyId());
+
+		_assertUserNotificationEvent(
+			kbArticle, "A knowledge base article needs review.", user);
+	}
+
+	private void _testReviewKBArticleWhenKBArticleIsInTrash() throws Exception {
+		User user = _addUser();
+
+		KBArticle kbArticle = _addKBArticle(
+			null, new Date(System.currentTimeMillis() + (Time.MINUTE * 10)),
+			_getServiceContext(user));
+
+		kbArticle.setReviewDate(new Date());
+
+		kbArticle = _kbArticleLocalService.updateKBArticle(kbArticle);
+
+		_kbArticleLocalService.moveKBArticleToTrash(
+			user.getUserId(), kbArticle.getResourcePrimKey());
+
+		_kbArticleLocalService.checkKBArticles(_group.getCompanyId());
+
+		Assert.assertEquals(
+			0,
+			_userNotificationEventLocalService.getUserNotificationEventsCount(
+				user.getUserId()));
 	}
 
 	private KBArticle _updateExpirationDate(KBArticle kbArticle) {
