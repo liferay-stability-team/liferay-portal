@@ -5,16 +5,24 @@
 
 package com.liferay.journal.web.internal.display.context;
 
+import com.liferay.dynamic.data.mapping.model.DDMForm;
 import com.liferay.dynamic.data.mapping.model.DDMStructure;
+import com.liferay.dynamic.data.mapping.model.LocalizedValue;
+import com.liferay.dynamic.data.mapping.model.Value;
 import com.liferay.dynamic.data.mapping.service.DDMStructureLocalServiceUtil;
+import com.liferay.dynamic.data.mapping.storage.DDMFormFieldValue;
 import com.liferay.dynamic.data.mapping.storage.DDMFormValues;
 import com.liferay.journal.model.JournalArticle;
 import com.liferay.journal.model.JournalFolder;
+import com.liferay.journal.service.JournalArticleLocalServiceUtil;
 import com.liferay.journal.service.JournalArticleServiceUtil;
 import com.liferay.journal.service.JournalFolderLocalService;
 import com.liferay.journal.service.JournalFolderLocalServiceUtil;
 import com.liferay.journal.web.internal.configuration.JournalWebConfiguration;
+import com.liferay.petra.string.StringPool;
+import com.liferay.portal.json.JSONFactoryImpl;
 import com.liferay.portal.kernel.exception.PortalException;
+import com.liferay.portal.kernel.json.JSONFactoryUtil;
 import com.liferay.portal.kernel.language.Language;
 import com.liferay.portal.kernel.language.LanguageUtil;
 import com.liferay.portal.kernel.module.service.Snapshot;
@@ -30,7 +38,9 @@ import com.liferay.portal.test.rule.LiferayUnitTestRule;
 
 import jakarta.servlet.http.HttpServletRequest;
 
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -70,6 +80,10 @@ public class JournalEditArticleDisplayContextTest {
 			"false"
 		);
 
+		JSONFactoryUtil jsonFactoryUtil = new JSONFactoryUtil();
+
+		jsonFactoryUtil.setJSONFactory(new JSONFactoryImpl());
+
 		LanguageUtil languageUtil = new LanguageUtil();
 
 		languageUtil.setLanguage(_language);
@@ -82,6 +96,7 @@ public class JournalEditArticleDisplayContextTest {
 	@After
 	public void tearDown() {
 		_ddmStructureLocalServiceUtilMockedStatic.close();
+		_journalArticleLocalServiceUtilMockedStatic.close();
 		_journalArticleServiceUtilMockedStatic.close();
 	}
 
@@ -112,6 +127,12 @@ public class JournalEditArticleDisplayContextTest {
 		).get(
 			_httpServletRequest, "home"
 		);
+	}
+
+	@Test
+	public void testGetDDMFormValues() throws PortalException {
+		_testGetDDMFormValuesWithEmptyLocalizedValues();
+		_testGetDDMFormValuesWithNonemptyLocalizedValues();
 	}
 
 	@Test
@@ -412,6 +433,194 @@ public class JournalEditArticleDisplayContextTest {
 		);
 	}
 
+	private DDMFormFieldValue _createDDMFormFieldValue(String string) {
+		DDMFormFieldValue ddmFormFieldValue = new DDMFormFieldValue();
+
+		ddmFormFieldValue.setName(RandomTestUtil.randomString());
+
+		LocalizedValue localizedValue = new LocalizedValue(LocaleUtil.US);
+
+		localizedValue.addString(LocaleUtil.US, string);
+
+		ddmFormFieldValue.setValue(localizedValue);
+
+		return ddmFormFieldValue;
+	}
+
+	private DDMFormValues _createDDMFormValues(
+		DDMFormFieldValue... ddmFormFieldValues) {
+
+		DDMFormValues ddmFormValues = new DDMFormValues(new DDMForm());
+
+		ddmFormValues.addAvailableLocale(LocaleUtil.US);
+
+		for (DDMFormFieldValue ddmFormFieldValue : ddmFormFieldValues) {
+			ddmFormValues.addDDMFormFieldValue(ddmFormFieldValue);
+		}
+
+		ddmFormValues.setDefaultLocale(LocaleUtil.US);
+
+		return ddmFormValues;
+	}
+
+	private JournalEditArticleDisplayContext
+			_getDDMStructureArticleJournalEditArticleDisplayContext(
+				DDMFormValues ddmFormValues)
+		throws PortalException {
+
+		Mockito.when(
+			_httpServletRequest.getParameterNames()
+		).thenReturn(
+			Collections.emptyEnumeration()
+		);
+
+		long ddmStructureId = RandomTestUtil.randomLong();
+
+		Mockito.when(
+			_httpServletRequest.getParameter("ddmStructureId")
+		).thenReturn(
+			String.valueOf(ddmStructureId)
+		);
+
+		DDMStructure ddmStructure = Mockito.mock(DDMStructure.class);
+
+		long groupId = RandomTestUtil.randomLong();
+
+		Mockito.when(
+			ddmStructure.getGroupId()
+		).thenReturn(
+			groupId
+		);
+
+		Mockito.when(
+			ddmStructure.getStructureId()
+		).thenReturn(
+			ddmStructureId
+		);
+
+		Mockito.when(
+			DDMStructureLocalServiceUtil.fetchStructure(ddmStructureId)
+		).thenReturn(
+			ddmStructure
+		);
+
+		JournalArticle ddmStructureArticle = Mockito.mock(JournalArticle.class);
+
+		Mockito.when(
+			ddmStructureArticle.getDDMFormValues()
+		).thenReturn(
+			ddmFormValues
+		);
+
+		Mockito.when(
+			JournalArticleLocalServiceUtil.getArticle(
+				groupId, DDMStructure.class.getName(), ddmStructureId)
+		).thenReturn(
+			ddmStructureArticle
+		);
+
+		JournalArticle journalArticle = Mockito.mock(JournalArticle.class);
+
+		Mockito.when(
+			journalArticle.isNew()
+		).thenReturn(
+			true
+		);
+
+		return new JournalEditArticleDisplayContext(
+			_httpServletRequest, _liferayPortletResponse, journalArticle, null,
+			null, null);
+	}
+
+	private void _testGetDDMFormValuesWithEmptyLocalizedValues()
+		throws PortalException {
+
+		DDMFormFieldValue fieldSetDDMFormFieldValue = new DDMFormFieldValue();
+
+		fieldSetDDMFormFieldValue.addNestedDDMFormFieldValue(
+			_createDDMFormFieldValue(StringPool.BLANK));
+		fieldSetDDMFormFieldValue.setName(RandomTestUtil.randomString());
+
+		JournalEditArticleDisplayContext journalEditArticleDisplayContext =
+			_getDDMStructureArticleJournalEditArticleDisplayContext(
+				_createDDMFormValues(
+					_createDDMFormFieldValue(StringPool.BLANK),
+					_createDDMFormFieldValue("[]"),
+					_createDDMFormFieldValue("[\"\"]"),
+					_createDDMFormFieldValue("{}"),
+					_createDDMFormFieldValue(
+						"{\"description\": \"\", \"title\": \"\", \"url\": " +
+							"\"\"}"),
+					fieldSetDDMFormFieldValue));
+
+		DDMFormValues articleDDMFormValues =
+			journalEditArticleDisplayContext.getDDMFormValues();
+
+		List<DDMFormFieldValue> articleDDMFormFieldValues =
+			articleDDMFormValues.getDDMFormFieldValues();
+
+		Assert.assertEquals(
+			articleDDMFormFieldValues.toString(), 6,
+			articleDDMFormFieldValues.size());
+
+		for (int i = 0; i < 5; i++) {
+			DDMFormFieldValue articleDDMFormFieldValue =
+				articleDDMFormFieldValues.get(i);
+
+			Value value = articleDDMFormFieldValue.getValue();
+
+			Assert.assertEquals(
+				Collections.emptySet(), value.getAvailableLocales());
+		}
+
+		DDMFormFieldValue articleFieldSetDDMFormFieldValue =
+			articleDDMFormFieldValues.get(5);
+
+		List<DDMFormFieldValue> nestedDDMFormFieldValues =
+			articleFieldSetDDMFormFieldValue.getNestedDDMFormFieldValues();
+
+		DDMFormFieldValue nestedDDMFormFieldValue =
+			nestedDDMFormFieldValues.get(0);
+
+		Value nestedValue = nestedDDMFormFieldValue.getValue();
+
+		Assert.assertEquals(
+			Collections.emptySet(), nestedValue.getAvailableLocales());
+	}
+
+	private void _testGetDDMFormValuesWithNonemptyLocalizedValues()
+		throws PortalException {
+
+		String string = RandomTestUtil.randomString();
+
+		JournalEditArticleDisplayContext journalEditArticleDisplayContext =
+			_getDDMStructureArticleJournalEditArticleDisplayContext(
+				_createDDMFormValues(
+					_createDDMFormFieldValue(StringPool.BLANK),
+					_createDDMFormFieldValue(string)));
+
+		DDMFormValues articleDDMFormValues =
+			journalEditArticleDisplayContext.getDDMFormValues();
+
+		List<DDMFormFieldValue> articleDDMFormFieldValues =
+			articleDDMFormValues.getDDMFormFieldValues();
+
+		DDMFormFieldValue emptyDDMFormFieldValue =
+			articleDDMFormFieldValues.get(0);
+
+		Value emptyValue = emptyDDMFormFieldValue.getValue();
+
+		Assert.assertEquals(
+			Collections.emptySet(), emptyValue.getAvailableLocales());
+
+		DDMFormFieldValue nonemptyDDMFormFieldValue =
+			articleDDMFormFieldValues.get(1);
+
+		Value nonemptyValue = nonemptyDDMFormFieldValue.getValue();
+
+		Assert.assertEquals(string, nonemptyValue.getString(LocaleUtil.US));
+	}
+
 	private void _testGetDefaultArticleLanguageIdFromArticle()
 		throws PortalException {
 
@@ -640,6 +849,9 @@ public class JournalEditArticleDisplayContextTest {
 		HttpServletRequest.class);
 	private final JournalArticle _journalArticle = Mockito.mock(
 		JournalArticle.class);
+	private final MockedStatic<JournalArticleLocalServiceUtil>
+		_journalArticleLocalServiceUtilMockedStatic = Mockito.mockStatic(
+			JournalArticleLocalServiceUtil.class);
 	private final MockedStatic<JournalArticleServiceUtil>
 		_journalArticleServiceUtilMockedStatic = Mockito.mockStatic(
 			JournalArticleServiceUtil.class);
